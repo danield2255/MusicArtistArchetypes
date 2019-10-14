@@ -1,0 +1,184 @@
+---
+title: "FrostDataPreprocessing"
+author: "Daniel DeFoe"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(tidytext)
+library(tools)
+library(stringr)
+source("frostFunctions.R")
+```
+
+Measure an artist's character with...
+ -Lyrical complexity
+ -Musical complextiy
+ -Genre Bleed (shifting genres or integrating multiple genres)
+ -Number of writers (perhaps number of writers who aren't the artist)
+ -Label
+
+There will be more in depth analysis of archetype artists (chord data), but spotify music data is available for all artists. 
+
+
+
+IS THIS CORRECT TO SAY?????
+The units of the study will be artists, as they will be who are tracked over time. Aside from this though, it will be useful to track the popular music landscape as a way of explaining character change over time. This will involve tracking the most popular genres over time by seeing the genere distribution on  the Billboard Hot 100, the top Spotify Streams, and the accolades given by the Grammy Awards. 
+
+## Plan of Analysis
+This is the roadmap of how the data will be analyzed. 
+1. All valid artists
+  a. Global music landscape 
+    -Distribution of genre over the Billboard Hot 100 and Spotify most streamed
+    -Get the genre from the non-genre specific Grammy awards
+  b. Artist character change over time 
+    -Number of songwriters an artist works with over time
+    -Trends of song meta-data over time
+    -Lyric complexity over time
+2. Archetype artists
+
+## Load in Data + Some Pre-Processing
+```{r}
+billboardDf = read.csv("FrostData/billboardRankings.csv")
+spotifyDf = read.csv("FrostData/spotifyStreams.csv")
+riaaDf = read.csv("FrostData/RIAACertifications.csv")
+grammyDf = read.csv("FrostData/grammyWinners.csv")
+songSecsDf = read.csv("FrostData/songSections.csv")
+songAttrsDf = read.csv("FrostData/songAttributes.csv")
+```
+
+
+
+```{r}
+colnames(billboardDf)[colnames(billboardDf) == "Weekly.rank"] = "BillboardWeekRank"
+colnames(billboardDf)[colnames(billboardDf) == "Peak.position"] = "PeakPosBillboard"
+colnames(billboardDf)[colnames(billboardDf) == "Weeks.on.chart"] = "WeeksOnBillboard"
+colnames(billboardDf)[colnames(billboardDf) == "Date"] = "ReleaseDate"
+colnames(billboardDf)[colnames(billboardDf) == "Writing.Credits"] = "WritingCredits"
+colnames(spotifyDf)[colnames(spotifyDf) == "Track.Name"] = "Name"
+colnames(spotifyDf)[colnames(spotifyDf) == "Position"] = "SpotifyWeekPosition"
+colnames(riaaDf)[colnames(riaaDf) == "Status"] = "RiaaStatus"
+colnames(riaaDf)[colnames(riaaDf) == "Title"] = "Name"
+colnames(grammyDf)[colnames(grammyDf) == "Award"] = "GrammyAward"
+colnames(grammyDf)[colnames(grammyDf) == "SongTitle"] = "Name"
+colnames(songSecsDf)[colnames(songSecsDf) == "Song"] = "Name"
+colnames(songAttrsDf)[colnames(songAttrsDf) == "Track"] = "Name"
+```
+
+```{r}
+head(riaaDf)
+```
+
+
+
+
+```{r}
+billboardDf["Artists"] = lapply(billboardDf["Artists"], artistPunctuationStrip)
+billboardDf[c("Artists","Name","Genre","WritingCredits", "Features")] = lapply(billboardDf[c("Artists","Name","Genre","WritingCredits", "Features")], stringColStandardizer) #not lyrics
+billboardDf$ReleaseDate = as.Date(billboardDf$ReleaseDate, format = "%B %d, %Y")
+
+spotifyDf["Artist"] = lapply(spotifyDf["Artist"], artistPunctuationStrip)
+spotifyDf[c("Name", "Artist", "Features")] = lapply(spotifyDf[c("Name", "Artist", "Features")], stringColStandardizer)
+spotifyDf["Name"] = lapply(spotifyDf["Name"], spotifySuffixStrip)
+
+
+grammyDf["Artist"] = lapply(grammyDf["Artist"], artistPunctuationStrip)
+grammyDf[c("Name", "Artist")] = lapply(grammyDf[c("Name", "Artist")],stringColStandardizer)
+
+songSecsDf["Artist"] = lapply(songSecsDf["Artist"], artistPunctuationStrip)
+songSecsDf[c("Name", "Artist")] = lapply(songSecsDf[c("Name", "Artist")], stringColStandardizer)
+
+songSecsDf[c("Section", "Progression", "EndDifferent")] = lapply(songSecsDf[c("Section", "Progression", "EndDifferent")],as.character)
+
+songAttrsDf["Artist"] = lapply(songAttrsDf["Artist"], artistPunctuationStrip)
+songAttrsDf[c("Album", "Artist", "Name")] = lapply(songAttrsDf[c("Album", "Artist", "Name")], stringColStandardizer)
+
+riaaDf["Artist"] = lapply(riaaDf["Artist"], artistPunctuationStrip)
+riaaDf[c("Name","Artist","Label")]=lapply(riaaDf[c("Name","Artist","Label")],stringColStandardizer)
+riaaDf[c("Name")]=lapply(riaaDf[c("Name")],riaaSuffixStrip)
+```
+
+
+## All Valid Artists
+As a note*** It will likely be wise to group by artist and some metric time (either just year, month, or full date) to get the picture when it comes to an artist's character over time. 
+
+# Global Music Landscape
+
+Let's create a count of all writers on a song. 
+**NOTE OF A PROBLEM: if we end up excluding writers who are not the artist themselves, will need to do some work to handle bands/groups 
+```{r}
+billboardDf = billboardDf %>%
+  mutate(numWriters = (str_count(WritingCredits, ",")+1)) %>%
+  mutate(numArtists =(str_count(Artists, ",")+1))
+
+(billboardDf)
+```
+
+As a way of tracking an artist's popularity, seeing how many songs an artist has on the chart in any given week can be useful.
+```{r}
+artists = unique(unlist(strsplit(as.character(billboardDf$Artists), ", ")))
+length(artists)
+#THIS IS THE LIST OF UNIQUE ARTISTS, MAY NOT NEED
+```
+
+```{r} 
+####CHECK THIS!!
+separate_rows(billboardDf, Artists, sep = ", ")
+chartedSongs = billboardDf %>% 
+  separate_rows(., Artists, sep = ", ") %>%
+  aggregate(Artists ~ (Artist = Artists) + Week, data = ., FUN = length)
+
+```
+
+
+For Spotify streams, the sum of streams grouped by artist, year, and month can serve as a measure of the artist's change in popularity.
+```{r}
+spotifyDfNew = separate(spotifyDf, col= Week, into= c("Year", "Month", "Day"), sep ="-")
+billboardDfNew = separate(billboardDf, col= Week, into= c("Year", "Month", "Day"), sep ="-")
+
+monthlyArtistStreams = aggregate(x = spotifyDfNew["Streams"], by = list(Artist = spotifyDfNew$Artist, Year = spotifyDfNew$Year, Month = spotifyDfNew$Month), FUN = sum)
+monthlyArtistStreams =as.data.frame.matrix(monthlyArtistStreams)
+
+spotifyDfNew[,c(8)] = sapply(spotifyDfNew[,c(8)], as.numeric)
+billboardDfNew[,c(9)] = sapply(billboardDfNew[,c(9)], as.numeric)
+
+spotifyDfNew = spotifyDfNew %>%
+  mutate(Week = (Day %/% 7) +1)
+
+spotifyDfNew = spotifyDfNew[!grepl("- Remix", spotifyDfNew$Name),]
+
+billboardDfNew = billboardDfNew %>%
+  mutate(Week = (Day %/% 7) +1)
+
+billboardDfNew$PeakPosBillboard[is.na(billboardDfNew$PeakPosBillboard)] = billboardDfNew$BillboardWeekRank[is.na(billboardDfNew$PeakPosBillboard)]
+
+billboardDfNew$WeeksOnBillboard[is.na(billboardDfNew$WeeksOnBillboard)] = 1
+```
+
+#Manual Input
+Some data is missing or wrong that is known in the archetype artist. That will be fixed here so the later analysis can be done better. 
+```{r}
+#Fix Weeks for Girls Like You -Maroon 5. One of their most important and recent songs to analyze
+billboardDfNew[(billboardDfNew$Artists %like% "Maroon 5") & (billboardDfNew$Name %like% "Girls Like you"), "WeeksOnBillboard"] = seq(52, 1, by = -1)
+
+#September 18, 1999 is input as release date to Learn To Fly - Foo Fighters
+billboardDfNew[(billboardDfNew$Artists %like% "Foo Fighters") & (billboardDfNew$Name %like% "Learn to Fly"),"ReleaseDate"] = as.Date("1999-09-18")
+```
+
+
+Now that the datasets are preprocessed, they will be saved as new files and are ready for analysis.
+```{r}
+write.csv(billboardDfNew, file = "FrostData/billboardDataClean.csv", row.names = FALSE)
+write.csv(spotifyDfNew, file = "FrostData/spotifyDataClean.csv", row.names = FALSE)
+write.csv(riaaDf, file = "FrostData/riaaDataClean.csv", row.names = FALSE)
+write.csv(grammyDf, file = "FrostData/grammyDataClean.csv")
+write.csv(songSecsDf, file = "FrostData/songSectionDataClean.csv", row.names = FALSE)
+write.csv(songAttrsDf, file = "FrostData/songAttrsDataClean.csv", row.names = FALSE)
+```
+
+
