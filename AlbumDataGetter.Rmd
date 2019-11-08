@@ -1,0 +1,163 @@
+---
+title: "AlbumData"
+author: "Daniel DeFoe"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Data Cleaning  
+
+```{r}
+library(tidyverse)
+
+source("frostFunctions.R")
+```
+
+
+```{r}
+songAttrsDf = read.csv("Data/songAttributes.csv")
+riaaDf = read.csv("Data/RIAACertifications.csv")
+grammyDf = read.csv("Data/grammyWinners.csv")
+artistDf = read.csv("Data/ArtistInfo.csv")
+billboardDf = read.csv("Data/billboardRankings.csv")
+```
+
+
+```{r}
+colnames(billboardDf)[colnames(billboardDf) == "Weekly.rank"] = "BillboardWeekRank"
+colnames(billboardDf)[colnames(billboardDf) == "Peak.position"] = "PeakPosBillboard"
+colnames(billboardDf)[colnames(billboardDf) == "Weeks.on.chart"] = "WeeksOnBillboard"
+colnames(billboardDf)[colnames(billboardDf) == "Date"] = "ReleaseDate"
+colnames(billboardDf)[colnames(billboardDf) == "Writing.Credits"] = "WritingCredits"
+
+
+colnames(riaaDf)[colnames(riaaDf) == "Status"] = "RiaaStatus"
+colnames(riaaDf)[colnames(riaaDf) == "Title"] = "Name"
+
+
+colnames(grammyDf)[colnames(grammyDf) == "Award"] = "GrammyAward"
+colnames(grammyDf)[colnames(grammyDf) == "SongTitle"] = "Name"
+colnames(grammyDf)[colnames(grammyDf) == "Genre"] = "GrammyGenre"
+
+
+colnames(songAttrsDf)[colnames(songAttrsDf) == "Track"] = "Name"
+```
+
+
+
+```{r}
+artistDf["Genres"] = lapply(artistDf["Genres"], stringColStandardizer)
+artistDf$Genres = tolower(artistDf$Genres)
+
+billboardDf["Artists"] = lapply(billboardDf["Artists"], artistPunctuationStrip)
+billboardDf[c("Artists","Name","Genre","WritingCredits", "Features")] = lapply(billboardDf[c("Artists","Name","Genre","WritingCredits", "Features")], stringColStandardizer) #not lyrics
+billboardDf$ReleaseDate = as.Date(billboardDf$ReleaseDate, format = "%B %d, %Y")
+billboardDf$Week = as.character(billboardDf$Week)
+billboardDf$Genre = tolower(billboardDf$Genre)
+
+grammyDf["Artist"] = lapply(grammyDf["Artist"], artistPunctuationStrip)
+grammyDf[c("GrammyGenre", "Album", "Artist")] = lapply(grammyDf[c("GrammyGenre", "Album",  "Artist")],stringColStandardizer)
+grammyDf$GrammyGenre = tolower(grammyDf$GrammyGenre)
+
+songAttrsDf["Artist"] = lapply(songAttrsDf["Artist"], artistPunctuationStrip)
+songAttrsDf[c("Album", "Artist", "Name")] = lapply(songAttrsDf[c("Album", "Artist", "Name")], stringColStandardizer)
+
+riaaDf["Artist"] = lapply(riaaDf["Artist"], artistPunctuationStrip)
+riaaDf[c("Album","Artist","Label")]=lapply(riaaDf[c("Album","Artist","Label")],stringColStandardizer)
+riaaDf[c("Album")]=lapply(riaaDf[c("Album")],riaaSuffixStrip)
+```
+
+## Engineer Features
+Get the data in the form it is needed, by extracting features of each artist's albums individually based on :
+  - song qualities
+  - previous album qualities
+  - album's place in the greater music industry scope
+  
+First the presence of genre tags in the Hot100 by year will determine the most popular genres per year. 
+```{r}
+yearlyPopularGenre = popularGenreGetter(billboardDf)
+print(yearlyPopularGenre)
+```
+
+Step-by-step the datasets will be grouped together
+
+```{r}
+riaaDf = riaaDf %>%
+  select(-X)
+
+grammyDf = grammyDf %>%
+  select(-X)
+
+accoladesDf = merge(riaaDf , grammyDf, by = c("Artist", "Album"))
+```
+
+```{r}
+head(songAttrsDf, 90)
+
+attrsOfAlbs = songAttrsDf %>%
+  select(-X) %>%
+  group_by(Artist, Album) %>%
+  summarize(numSongsOnAlb = n(), 
+            avgAcousticness = mean(Acousticness), 
+            maxAcousticnessTrack = max(Acousticness),
+            avgDanceability = mean(Danceability),
+            maxDanceabilityTrack = max(Danceability), 
+            avgEnergy = mean(Energy), 
+            rangeEnergy = max(Energy) - min(Energy), 
+            avgInstrumentalness = mean(Instrumentalness),
+            maxInstrumentalnessTrack = max(Instrumentalness), 
+            avgLiveness = mean(Liveness), 
+            maxLivenessTrack = max(Liveness),
+            avgLoudness = mean(Loudness),
+            rangeLoudness = max(Loudness) - min(Loudness),
+            avgSpeechiness = mean(Speechiness), 
+            maxSpeechinessTrack = max(Speechiness),
+            avgValence = mean(Valence), 
+            rangeValence = max(Valence) - min(Valence), 
+            totalDurationSeconds = sum(Duration)/1000, 
+            avgTempo = mean(Tempo), 
+            rangeTempo = max(Tempo) - min(Tempo), 
+            moreCommonMajMin = which.max(Mode), 
+            presenceUncommonTS = ifelse(any(TimeSignature != 4), 0, 1), 
+            totalExplicit = sum(ifelse(Explicit == FALSE, 0, 1)))%>%
+  mutate(proportionExplicit =totalExplicit/n())
+
+head(attrsOfAlbs)
+```
+
+Get proportion of songs on each album which were on the hot 100 at some point
+```{r}
+charted = billboardDf %>% 
+  select("BillboardArtist"=Artists,"BillboardSong"= Name) %>% 
+  distinct()
+
+artists = strsplit(charted$BillboardArtist, split = ",")
+charted = data.frame(BillboardArtist = unlist(artists), BillboardSong = rep(charted$BillboardSong,sapply(artists, length)))
+
+temp = songAttrsDf %>%
+  select(Artist, Album, Name) %>%
+  group_by(Artist, Album) %>% 
+  merge(charted, by.x = c("Artist","Name"), by.y = c("BillboardArtist", "BillboardSong") ) %>%
+  group_by(Artist, Album) %>%
+  summarize(numChartingSongs = n())
+
+attrsOfAlbsNext =merge(attrsOfAlbs, temp, by = c("Artist", "Album"), all.x = TRUE)
+attrsOfAlbsNext[["numChartingSongs"]][is.na(attrsOfAlbsNext[["numChartingSongs"]])] = 0
+
+attrsOfAlbsPropotions = attrsOfAlbsNext %>% 
+  group_by(Artist, Album) %>%
+  mutate(proportionAlbumCharting = numChartingSongs / numSongsOnAlb)
+
+head(attrsOfAlbsPropotions, 100)
+```
+
+
+
+
+
+## Aggregating Data by Album
+These operations will take data from various dataframes and group it by album.
+
