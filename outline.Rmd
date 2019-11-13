@@ -1,0 +1,56 @@
+---
+title: "Music Archetypes"
+author: "Kelly Bodwin"
+date: "11/13/2019"
+output: html_document
+---
+
+# Album Explorations
+
+## Correlations
+
+* Between avg and max metrics
+
+* Between all avgs
+
+* Between all maxes
+
+## PCA on Album info
+
+* Just avg Spotify metrics
+
+* ... then add in max
+
+* ... then add in length (# songs? duration? duration per song?)
+
+* ... then add the sparser metrics (explict/billboard)
+
+For each PCA, 
+
+* Holistic interpretation of first 2-4 PCs.  
+
+* Plot data on first 2-4 PCs, how does clustering look?
+
+## k-means
+
+If there's PCA result you like, pick 2 dimensions and throw k-means.
+
+Follow up with artists dataset, see cluster saturation with
+
+* Gender
+
+* Solo/Group
+
+* Year?  Awards?  etc
+
+## dbscan
+
+* See if you can run it on a couple dimensions
+
+* If finished, same followups
+
+# Artists
+
+Supervised learning (LDA)
+
+Simple group comparisons
