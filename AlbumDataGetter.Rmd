@@ -75,8 +75,7 @@ riaaDf[c("Album","Artist","Label")]=lapply(riaaDf[c("Album","Artist","Label")],s
 riaaDf[c("Album")]=lapply(riaaDf[c("Album")],riaaSuffixStrip)
 
 albumDates["ReleaseDate"] = lapply(albumDates["ReleaseDate"], as.Date)
-albumDates = albumDates %>%
-  select(-X)
+
 ```
 
 
@@ -100,15 +99,38 @@ Step-by-step the datasets will be grouped together
 ```{r}
 riaaDf = riaaDf %>%
   select(-X)
-
-grammyDf = grammyDf %>%
-  select(-X)
-
-accoladesDf = merge(riaaDf , grammyDf, by = c("Artist", "Album"))
 ```
 
 ```{r}
-artistDf
+albumYear = grammyDf %>%
+  select(Artist, Album, GrammyYear) %>% 
+  distinct()
+```
+
+```{r}
+grammyDf = grammyDf %>%
+  select(Album, Artist, GrammyAward) %>%
+  group_by(Artist, Album) %>%
+  mutate(numGrammys = n()) %>% 
+  select(Album, Artist, numGrammys) 
+```
+```{r}
+grammyDf = grammyDf %>%
+  merge(albumYear, by = c("Artist", "Album"))
+```
+
+
+
+```{r}
+grammyDf = grammyDf %>%
+  distinct()
+
+accoladesDf = merge(riaaDf , grammyDf, by = c("Artist", "Album"), x.all = TRUE) %>% 
+  distinct()
+
+```
+```{r}
+accoladesDf
 ```
 
 
@@ -149,8 +171,8 @@ attrsOfAlbs = songAttrsDf %>%
   merge(artistDf %>% select(-X), by = "Artist") 
 
 attrsOfAlbs %>% filter(Artist == "Eminem")
-head(attrsOfAlbs, 1300)
 ```
+
 
 Get proportion of songs on each album which were on the hot 100 at some point
 ```{r}
@@ -178,10 +200,18 @@ attrsOfAlbsPropotions = attrsOfAlbsNext %>%
 head(attrsOfAlbsPropotions, 100)
 ```
 
+```{r}
+attrsOfAlbsFinal = attrsOfAlbs %>%
+  merge(accoladesDf, by = c("Artist", "Album"), all.x = TRUE)
+attrsOfAlbsFinal$numGrammys[is.na(attrsOfAlbsFinal$numGrammys)] = 0
+
+```
 
 
+```{r}
+write_csv(attrsOfAlbsFinal, "Data/attrsOfAlbsFinal.csv")
+write_csv(artistDf, "Data/artistDf.csv")
+```
 
-
-## Aggregating Data by Album
-These operations will take data from various dataframes and group it by album.
-
+- PCA 
+- KMeans
