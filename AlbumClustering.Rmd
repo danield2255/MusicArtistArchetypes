@@ -1,0 +1,116 @@
+---
+title: "Album Clustering"
+author: "Daniel DeFoe"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+```{r}
+library(tidyverse)
+library(ggplot2)
+library(RColorBrewer)
+library(dplyr) 
+```
+
+
+## Data Subset Creations
+```{r}
+df = read_csv("Data/attrsOfAlbsFinal.csv")
+df = within(df,  id <- paste(Album, Artist, sep="---"))
+
+head(df)
+dfSpotifyOnly = df %>%
+  select(id, avgAcousticness, avgDanceability, avgEnergy, avgInstrumentalness, avgLiveness, avgLoudness, avgSpeechiness, avgValence)
+
+
+dfSpotifyAllMeasures = df %>%
+  select(id, avgAcousticness, maxAcousticnessTrack, avgDanceability, maxDanceabilityTrack, rangeEnergy, avgEnergy, maxInstrumentalnessTrack, avgInstrumentalness, avgLiveness, maxLivenessTrack, avgLoudness, rangeLoudness, avgSpeechiness, maxSpeechinessTrack, avgValence, rangeValence)
+
+```
+
+## PCA
+```{r}
+pcaOfData = function(df){
+  dfSub = df[,-1]
+  pcas = prcomp(dfSub, center = TRUE, scale. = TRUE)
+  plot(pcas)
+  eigs = get_eigenvalue(pcas)
+  return (pcas)
+}
+```
+
+```{r}
+pcsSpotifyAll = pcaOfData(dfSpotifyAllMeasures)
+pcsSpotifyAll$x
+```
+
+
+##K-Means Clustering
+
+```{r}
+kMeansPipeline = function(df, numClusts,pcomps){
+  dataSub = as.data.frame(df)
+  if (!pcomps){
+    dataSub = dataSub[,-1]
+  }
+  wss <- (nrow(dataSub)-1)*sum(apply(dataSub,2,var))
+  for (i in 2:50) wss[i] <- sum(kmeans(dataSub,centers=i)$withinss)
+  plot(1:50, wss, type="b", xlab="Number of Clusters",
+       ylab="Within groups sum of squares")
+  
+  k <- kmeans(dataSub, numClusts,iter.max=1000)
+  clustDf = as.data.frame(df)
+  clustDf$cluster = as.factor(k$cluster)
+  clustDf = clustDf[order(clustDf$cluster),]
+  return(clustDf)
+}
+```
+
+```{r}
+artistClusterCount = function(clusterData){
+  artistCounts = clusterData %>%
+    separate(id, c("Album", "Artist"), "---") %>%
+    select(Artist, cluster) %>%
+    group_by(cluster, Artist) %>%
+    summarise(countInClusts = n())
+  return(artistCounts)
+}
+```
+
+```{r}
+#THIS DOESNT SEEM TO CLUSTER THE 
+pcaClusters = kMeansPipeline(data.frame(pcsSpotifyAll$x), 5, TRUE)
+plot(pcsSpotifyAll$x[,1:2], col=pcaClusters$clust, pch=16)
+```
+
+
+```{r}
+clustsSpotifyMetrics = kMeansPipeline(dfSpotifyOnly, 5, FALSE)
+```
+
+
+```{r}
+print(clustsSpotifyMetrics)
+artistCount=artistClusterCount(clustsSpotifyMetrics)
+print(artistCount)
+```
+
+
+```{r}
+wss <- (nrow(pcaSpotifyMetrics$x)-1)*sum(apply(pcaSpotifyMetrics$x,2,var))
+for (i in 2:50) wss[i] <- sum(kmeans(pcaSpotifyMetrics$x,
+                                     centers=i)$withinss)
+plot(1:50, wss, type="b", xlab="Number of Clusters",
+     ylab="Within groups sum of squares")
+
+k <- kmeans(pcaSpotifyMetrics$x, 11,iter.max=1000)
+pcaSpotifyMetrics$x$cluster = as.factor(k$cluster)
+```
+
+
+
+
+
+
