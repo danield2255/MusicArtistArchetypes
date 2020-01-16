@@ -12,10 +12,12 @@ library(tidyverse)
 library(ggplot2)
 library(RColorBrewer)
 library(dplyr) 
+
 ```
 
 
 ## Data Subset Creations
+One dataset is made to include only the average of all the subjective spotify measures and then another is made to include more expressions(maximums and ranges) of some of these measures. 
 ```{r}
 df = read_csv("Data/attrsOfAlbsFinal.csv")
 df = within(df,  id <- paste(Album, Artist, sep="---"))
@@ -31,20 +33,29 @@ dfSpotifyAllMeasures = df %>%
 ```
 
 ## PCA
+First the dataset with the complete set of spotify measures was plugged into pca. The proportion of the variance captured in each principle component is seen in the summary.
 ```{r}
 pcaOfData = function(df){
   dfSub = df[,-1]
   pcas = prcomp(dfSub, center = TRUE, scale. = TRUE)
   plot(pcas)
-  eigs = get_eigenvalue(pcas)
+  #eigs = get_eigenvalue(pcas) #outdated func?
   return (pcas)
 }
 ```
 
 ```{r}
 pcsSpotifyAll = pcaOfData(dfSpotifyAllMeasures)
-pcsSpotifyAll$x
+summary(pcsSpotifyAll)
 ```
+
+Next PCA was applied to the smaller subest of averages only of the spotify metrics. 
+```{r}
+pcsSpotifySubMetrics = pcaOfData(dfSpotifyOnly)
+summary(pcsSpotifySubMetrics)
+```
+
+
 
 
 ##K-Means Clustering
@@ -79,35 +90,60 @@ artistClusterCount = function(clusterData){
 }
 ```
 
+The principle components of the complete set of spotify metrics are clustered here using k-means. 
 ```{r}
 #THIS DOESNT SEEM TO CLUSTER THE 
 pcaClusters = kMeansPipeline(data.frame(pcsSpotifyAll$x), 5, TRUE)
 plot(pcsSpotifyAll$x[,1:2], col=pcaClusters$clust, pch=16)
 ```
 
+Next the principle components of only the average spotify metrics are clustered. 
+```{r}
+###THIS CURRENTLY DOESN"T WORK
+#pcaSpotifySubClusters = kMeansPipeline(data.frame(pcsSpotifySubMetrics$x), 5, TRUE)
+#plot(pcaSpotifySubClusters$x[,1:2], col=pcaSpotifySubClusters$clust, pch=16, xlim = c(0, 1), ylim = c(0, 1))
+```
 
+The actual albums will attempt to be clustered next by only the average spotify metrics. 
 ```{r}
 clustsSpotifyMetrics = kMeansPipeline(dfSpotifyOnly, 5, FALSE)
 ```
 
+The couns of how many artists show up in each cluster follows. 
+```{r}
+print(clustsSpotifyMetrics)
+artistCount=artistClusterCount(clustsSpotifyMetrics)
+print(artistCount)
+
+johnMayerAppearances = artistCount %>%
+  filter(Artist == "John Mayer")
+print(johnMayerAppearances)
+
+maroon5Appearances = artistCount %>%
+  filter(Artist == "Maroon 5")
+print(maroon5Appearances)
+
+```
+
+
+
 
 ```{r}
+wss <- (nrow(pcsSpotifySubMetrics$x)-1)*sum(apply(pcsSpotifySubMetrics$x,2,var))
+for (i in 2:50) wss[i] <- sum(kmeans(pcsSpotifySubMetrics$x,
+                                     centers=i)$withinss)
+plot(1:50, wss, type="b", xlab="Number of Clusters",
+     ylab="Within groups sum of squares")
+
+k <- kmeans(pcsSpotifySubMetrics$x, 11,iter.max=1000)
+pcsSpotifySubMetrics$x$cluster = as.factor(k$cluster)
+
 print(clustsSpotifyMetrics)
 artistCount=artistClusterCount(clustsSpotifyMetrics)
 print(artistCount)
 ```
 
 
-```{r}
-wss <- (nrow(pcaSpotifyMetrics$x)-1)*sum(apply(pcaSpotifyMetrics$x,2,var))
-for (i in 2:50) wss[i] <- sum(kmeans(pcaSpotifyMetrics$x,
-                                     centers=i)$withinss)
-plot(1:50, wss, type="b", xlab="Number of Clusters",
-     ylab="Within groups sum of squares")
-
-k <- kmeans(pcaSpotifyMetrics$x, 11,iter.max=1000)
-pcaSpotifyMetrics$x$cluster = as.factor(k$cluster)
-```
 
 
 
