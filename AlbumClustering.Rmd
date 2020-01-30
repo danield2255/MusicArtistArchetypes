@@ -78,7 +78,22 @@ pcsSpotifyAll$rotation[,1:5]
 ```
 Here we will define that the PC's as follows:
 - PC1: How acoustic, and generally low energy and mellow an album is 
-- PC2: 
+- PC2: The levels of dancability and speechiness are unimportant in defining this PC, but energy and loudness may 
+- PC3: Not measuring live albums, but how happy and dancable an album may be
+- PC4: Very strongly measuring the max instrumentalness and range of instrumentalness in an album, as well as somewhat how dancable
+
+
+Next, PCA was applied to the data with all spotify metrics and the objective average metrics. 
+```{r}
+pcsSpotifyAndObjectives = pcaOfData(dfSpotifyAndObjectives)
+pcsSpotifyAndObjectives$rotation[,1:5]
+```
+Here we will define that the PC's as follows:
+- PC1: Measure of how explicit an album is compiled with how dancable and speechy it is, potentially a score of something being a rap album
+- PC2: Measure of how low energy, low volume, high dynamic, and acoustic an album is.
+- PC3: How short an album is, with also measuring how acoustic and dancable it is.
+- PC4: Measure of how long, instrumental, happy, and dancable an album is that is not live
+- PC5: Measure of how short, explicit, instrumental, slow, and sad an album is.
 
 
 
