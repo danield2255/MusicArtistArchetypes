@@ -12,7 +12,7 @@ library(tidyverse)
 library(ggplot2)
 library(RColorBrewer)
 library(dplyr) 
-
+library(mltools)
 ```
 
 
@@ -96,8 +96,13 @@ Here we will define that the PC's as follows:
 - PC5: Measure of how short, explicit, instrumental, slow, and sad an album is.
 
 
+Next, PCA will be applied to all of our data.  TODO
+```{r}
 
-##K-Means Clustering
+```
+
+
+##K-Means Clustering and Case Studies
 What will really be focused on here is the clustering of the PC's as this will reduce the affect of the noise. 
 ```{r}
 kMeansPipeline = function(df, numClusts){
@@ -130,35 +135,15 @@ artistClusterCount = function(clusterData){
 }
 ```
 
-The principle components of the complete set of spotify metrics are clustered here using k-means. 
+The principle components of only the average spotify metrics are clustered. 
 ```{r}
-pcaClusters = kMeansPipeline(data.frame(pcsSpotifyAll$x[,1:3]), 5)
-pcaClusters
-plot(pcsSpotifyAll$x[,2:3], col=pcaClusters$cluster, pch=16)
-#clustDf = clustDf[order(clustDf$cluster),]
-```
-
-Next the principle components of only the average spotify metrics are clustered. 
-```{r}
-###THIS CURRENTLY DOESN"T WORK
 pcaSpotifySubClusters = kMeansPipeline(data.frame(pcsSpotifySubMetrics$x[,1:3]), 5)
 pcaSpotifySubClusters
 plot(pcsSpotifySubMetrics$x[,2:3], col=pcaSpotifySubClusters$cluster, pch=16)
 ```
 
-The actual albums will attempt to be clustered next by only the average spotify metrics. 
 ```{r}
-#clustsSpotifyMetrics = kMeansPipeline(dfSpotifySubMetrics, 5, FALSE)
-```
-
-The couns of how many artists show up in each cluster follows. 
-```{r}
-print(clustsSpotifyMetrics)
-artistCount=artistClusterCount(clustsSpotifyMetrics)
-artistCount = artistCount[order(artistCount$countInClusts, decreasing = TRUE),]
-print(artistCount)
-#clustDf = clustDf[order(clustDf$cluster),]
-
+artistCount=artistClusterCount(pcaSpotifySubClusters)
 johnMayerAppearances = artistCount %>%
   filter(Artist == "John Mayer")
 print(johnMayerAppearances)
@@ -166,7 +151,50 @@ print(johnMayerAppearances)
 maroon5Appearances = artistCount %>%
   filter(Artist == "Maroon 5")
 print(maroon5Appearances)
-
-
 ```
+
+
+The principle components of the complete set of spotify metrics are clustered here using k-means. 
+```{r}
+pcaSpotifyAllClusters = kMeansPipeline(data.frame(pcsSpotifyAll$x[,1:3]), 5)
+pcaSpotifyAllClusters
+plot(pcsSpotifyAll$x[, c(2,3)], col=pcaSpotifyAllClusters$cluster, pch=16)
+#clustDf = clustDf[order(clustDf$cluster),]
+```
+```{r}
+artistCount=artistClusterCount(pcaSpotifyAllClusters)
+johnMayerAppearances = artistCount %>%
+  filter(Artist == "John Mayer")
+print(johnMayerAppearances)
+
+maroon5Appearances = artistCount %>%
+  filter(Artist == "Maroon 5")
+print(maroon5Appearances)
+```
+
+
+
+
+The principle components of the complete set of spotify metrics and the objective measures are clustered here using k-means. 
+```{r}
+pcaSpotifyAllCompleteClusters = kMeansPipeline(data.frame(pcsSpotifyAndObjectives$x[,1:3]), 5)
+pcaSpotifyAllCompleteClusters
+plot(pcsSpotifyAndObjectives$x[, c(2,3)], col=pcaSpotifyAllCompleteClusters$cluster, pch=16)
+#clustDf = clustDf[order(clustDf$cluster),]
+```
+
+```{r}
+artistCount=artistClusterCount(pcaSpotifyAllCompleteClusters)
+johnMayerAppearances = artistCount %>%
+  filter(Artist == "John Mayer")
+print(johnMayerAppearances)
+
+maroon5Appearances = artistCount %>%
+  filter(Artist == "Maroon 5")
+print(maroon5Appearances)
+```
+
+
+
+
 
