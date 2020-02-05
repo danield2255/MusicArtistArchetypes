@@ -5,20 +5,22 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE)
 ```
-```{r}
+
+```{r, include=FALSE}
 library(tidyverse)
 library(ggplot2)
 library(RColorBrewer)
 library(dplyr) 
 library(mltools)
+library(rlang)
 ```
 
 
 ## Data Subset Creations
 One dataset is made to include only the average of all the subjective spotify measures and then another is made to include more expressions(maximums and ranges) of some of these measures. 
-```{r}
+```{r, include=FALSE}
 df = read_csv("Data/attrsOfAlbsFinal.csv")
 df = within(df,  id <- paste(Album, Artist, sep="---"))
 
@@ -40,7 +42,31 @@ dfAll = df %>%
   select(id, Gender, Group.Solo, RiaaStatus, Label, numGrammys, numSongsOnAlb, totalDurationSeconds, avgTempo, rangeTempo, moreCommonMajMin, presenceUncommonTS, totalExplicit, proportionExplicit, avgAcousticness, maxAcousticnessTrack, avgDanceability, maxDanceabilityTrack, rangeEnergy, avgEnergy, maxInstrumentalnessTrack, avgInstrumentalness, avgLiveness, maxLivenessTrack, avgLoudness, rangeLoudness, avgSpeechiness, maxSpeechinessTrack, avgValence, rangeValence)
 
 
+#subset that is really just the objective data
+dfObjectiveOnly = df %>%
+  select(id, ReleaseYear, Genres, Gender, Group.Solo, RiaaStatus, Label, numGrammys, numSongsOnAlb, totalDurationSeconds)
+
 ```
+
+
+TODO: Will try to create a function to get the more basic genres of an album. (Ex: Rock, Pop, Country, Rap, Hip-hop, R&B, Electronic, EDM, Singer-Songwriter, Alternative, Jazz, Blues, Instrumental, Live, Metal)
+```{r, include=FALSE}
+####WHY IS THIS NOT WORKING?
+genreFinder = function(g){
+  ret = ""
+  searchThrough = tolower(g)
+  print(searchThrough)
+  if (grepl(searchThrough, "rock")){
+    print("IN")
+    ret = paste(ret, "rock")
+  }
+  return(ret)
+}
+
+dfObjectiveOnly$GenreArg = ifelse(grepl(dfObjectiveOnly$Genres, "rock"), "rock", "") #genreFinder(Genres))
+print(dfObjectiveOnly)
+```
+
 
 ## PCA
 First the dataset with the complete set of spotify measures was plugged into pca. The proportion of the variance captured in each principle component is seen in the summary. Will look at the rotation of the PC's to see the loadings of the PC's to each feature. Ths will be done to really define each principle component. 
@@ -51,7 +77,6 @@ pcaOfData = function(df){
   pcas = prcomp(dfSub, center = TRUE, scale. = TRUE)
   plot(pcas)
   pcas$x = cbind(ids, data.frame(pcas$x))
-  #eigs = get_eigenvalue(pcas) #outdated func?
   return (pcas)
 }
 ```
@@ -60,13 +85,14 @@ First, PCA was applied to the smaller subest of averages only of the spotify met
 ```{r}
 pcsSpotifySubMetrics = pcaOfData(dfSpotifySubMetrics)
 #summary(pcsSpotifySubMetrics)
-pcsSpotifySubMetrics
+pcsSpotifySubMetrics$rotation[,1:5]
 ```
 Here we will define that the PC's as follows:
 - PC1: How low energy, and acoustic an album is
 - PC2: Relatively neutral and poorly defined component
 - PC3: How very likely something is a live album
 - PC4: How instrumentally heavy and speech heavy an album is
+- PC5: How live, instrumental, and happy an album is
 
 
 
@@ -81,6 +107,7 @@ Here we will define that the PC's as follows:
 - PC2: The levels of dancability and speechiness are unimportant in defining this PC, but energy and loudness may 
 - PC3: Not measuring live albums, but how happy and dancable an album may be
 - PC4: Very strongly measuring the max instrumentalness and range of instrumentalness in an album, as well as somewhat how dancable
+- PC5: How sad and speechy an album is with a low range of energy
 
 
 Next, PCA was applied to the data with all spotify metrics and the objective average metrics. 
@@ -96,20 +123,15 @@ Here we will define that the PC's as follows:
 - PC5: Measure of how short, explicit, instrumental, slow, and sad an album is.
 
 
-Next, PCA will be applied to all of our data.  TODO
-```{r}
-
-```
+Next, PCA will be applied to all of our data.  TODO:Need to dummify the categorical vars
 
 
-##K-Means Clustering and Case Studies
+
+## K-Means Clustering and Case Studies
 What will really be focused on here is the clustering of the PC's as this will reduce the affect of the noise. 
 ```{r}
 kMeansPipeline = function(df, numClusts){
   dataSub = as.data.frame(df)
-  #if (!pcomps){
-    #dataSub = dataSub[,-1]
-  #}
   dataSub = dataSub[,-1]
   wss <- (nrow(dataSub)-1)*sum(apply(dataSub,2,var))
   for (i in 2:50) wss[i] <- sum(kmeans(dataSub,centers=i)$withinss)
@@ -119,7 +141,6 @@ kMeansPipeline = function(df, numClusts){
   k <- kmeans(dataSub, numClusts,iter.max=1000)
   clustDf = as.data.frame(df)
   clustDf$cluster = as.factor(k$cluster)
-  #clustDf = clustDf[order(clustDf$cluster),]
   return(clustDf)
 }
 ```
@@ -135,12 +156,44 @@ artistClusterCount = function(clusterData){
 }
 ```
 
+A function will be created to join the demographic and objective data back to the album names once they have been clustered. This will allow us to see the prevalence of traits in particular clusters. 
+```{r}
+###Function to rejoin two datasets
+reattachData = function(clustData, objectiveData){
+  newData = clustData %>%
+    inner_join(objectiveData, by = "id") %>%
+    distinct()
+  return(newData)
+}
+
+## Groupby to count
+countInClusters = function(df, cols){
+  print(df$col)
+  counts = df %>%
+    group_by(cluster, !!!syms(cols))%>%
+    summarise(countInClusts = n())
+  return(counts)
+}
+
+
+```
+
+
 The principle components of only the average spotify metrics are clustered. 
 ```{r}
 pcaSpotifySubClusters = kMeansPipeline(data.frame(pcsSpotifySubMetrics$x[,1:3]), 5)
-pcaSpotifySubClusters
+#pcaSpotifySubClusters
 plot(pcsSpotifySubMetrics$x[,2:3], col=pcaSpotifySubClusters$cluster, pch=16)
 ```
+
+```{r}
+spotifySubReattached = reattachData(pcaSpotifySubClusters, dfObjectiveOnly)
+#print(spotifySubReattached)
+a = countInClusters(spotifySubReattached, c("Gender"))
+print(a)
+```
+
+
 
 ```{r}
 artistCount=artistClusterCount(pcaSpotifySubClusters)
@@ -157,7 +210,7 @@ print(maroon5Appearances)
 The principle components of the complete set of spotify metrics are clustered here using k-means. 
 ```{r}
 pcaSpotifyAllClusters = kMeansPipeline(data.frame(pcsSpotifyAll$x[,1:3]), 5)
-pcaSpotifyAllClusters
+#pcaSpotifyAllClusters
 plot(pcsSpotifyAll$x[, c(2,3)], col=pcaSpotifyAllClusters$cluster, pch=16)
 #clustDf = clustDf[order(clustDf$cluster),]
 ```
@@ -178,7 +231,7 @@ print(maroon5Appearances)
 The principle components of the complete set of spotify metrics and the objective measures are clustered here using k-means. 
 ```{r}
 pcaSpotifyAllCompleteClusters = kMeansPipeline(data.frame(pcsSpotifyAndObjectives$x[,1:3]), 5)
-pcaSpotifyAllCompleteClusters
+#pcaSpotifyAllCompleteClusters
 plot(pcsSpotifyAndObjectives$x[, c(2,3)], col=pcaSpotifyAllCompleteClusters$cluster, pch=16)
 #clustDf = clustDf[order(clustDf$cluster),]
 ```
