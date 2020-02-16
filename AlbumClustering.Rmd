@@ -15,6 +15,8 @@ library(RColorBrewer)
 library(dplyr) 
 library(mltools)
 library(rlang)
+library(reshape2)
+library(stringi)
 ```
 
 
@@ -34,7 +36,7 @@ dfSpotifyAllMeasures = df %>%
   select(id, avgAcousticness, maxAcousticnessTrack, avgDanceability, maxDanceabilityTrack, rangeEnergy, avgEnergy, maxInstrumentalnessTrack, avgInstrumentalness, avgLiveness, maxLivenessTrack, avgLoudness, rangeLoudness, avgSpeechiness, maxSpeechinessTrack, avgValence, rangeValence)
 
 #data with all spotify metrics and some objective measures
-dfSpotifyAndObjectives = df %>%
+dfSpotifyAndMusicData = df %>%
   select(id, numSongsOnAlb, totalDurationSeconds, avgTempo, rangeTempo, moreCommonMajMin, presenceUncommonTS, totalExplicit, proportionExplicit, avgAcousticness, maxAcousticnessTrack, avgDanceability, maxDanceabilityTrack, rangeEnergy, avgEnergy, maxInstrumentalnessTrack, avgInstrumentalness, avgLiveness, maxLivenessTrack, avgLoudness, rangeLoudness, avgSpeechiness, maxSpeechinessTrack, avgValence, rangeValence)
 
 #data with all 
@@ -48,23 +50,39 @@ dfObjectiveOnly = df %>%
 
 ```
 
-
-TODO: Will try to create a function to get the more basic genres of an album. (Ex: Rock, Pop, Country, Rap, Hip-hop, R&B, Electronic, EDM, Singer-Songwriter, Alternative, Jazz, Blues, Instrumental, Live, Metal)
+The genre of the album will be inferred by grabbing the larger, more general common genre names from the list of all the songs genres in the album. First the top 10 genres from all of the albums will be determined. Ultimately each album will be categorized with these 10 genres when applicable. 
 ```{r, include=FALSE}
-####WHY IS THIS NOT WORKING?
-genreFinder = function(g){
-  ret = ""
-  searchThrough = tolower(g)
-  print(searchThrough)
-  if (grepl(searchThrough, "rock")){
-    print("IN")
-    ret = paste(ret, "rock")
+dfObjectiveOnly["Genres"] = lapply(dfObjectiveOnly["Genres"], gsub, pattern = "hip hop", replacement = "hip-hop", fixed = TRUE) 
+
+mostCommonGenres = dfObjectiveOnly["Genres"] %>%
+  tolower() %>%
+  str_split("(,|\\s|\")") %>%
+  unlist() %>%
+  table() %>%
+  sort(decreasing = TRUE)
+
+##Takes the top 10 genres
+mostCommonGenres = mostCommonGenres[-1] %>%
+  head(10) %>%
+  names()
+
+commonGenreFinder = function(genres){
+  if (is.na(genres)){
+    return ("Other")
   }
-  return(ret)
+  commonGenrePresence = str_count(genres, mostCommonGenres)
+  present = mostCommonGenres[commonGenrePresence != 0]
+  ret = stri_paste(present, collapse = ", ")
+  if (length(ret) < 1){
+    return ("Other")
+  }
+  return (ret)
 }
 
-dfObjectiveOnly$GenreArg = ifelse(grepl(dfObjectiveOnly$Genres, "rock"), "rock", "") #genreFinder(Genres))
-print(dfObjectiveOnly)
+
+GeneralGenres = lapply(1:nrow(dfObjectiveOnly), function(rNum) { commonGenreFinder(dfObjectiveOnly[rNum, "Genres"])})
+dfObjectiveOnly$GeneralGenres= do.call(rbind, GeneralGenres)
+dfObjectiveOnly = dfObjectiveOnly %>% select(-Genres)
 ```
 
 
@@ -112,7 +130,7 @@ Here we will define that the PC's as follows:
 
 Next, PCA was applied to the data with all spotify metrics and the objective average metrics. 
 ```{r}
-pcsSpotifyAndObjectives = pcaOfData(dfSpotifyAndObjectives)
+pcsSpotifyAndObjectives = pcaOfData(dfSpotifyAndMusicData)
 pcsSpotifyAndObjectives$rotation[,1:5]
 ```
 Here we will define that the PC's as follows:
@@ -168,13 +186,47 @@ reattachData = function(clustData, objectiveData){
 
 ## Groupby to count
 countInClusters = function(df, cols){
-  print(df$col)
   counts = df %>%
     group_by(cluster, !!!syms(cols))%>%
-    summarise(countInClusts = n())
+    summarise(countInClusts = n()) %>%
+    unite(Group, cols)
+  print(counts)
   return(counts)
 }
 
+
+# chains previous functions to make stacked bar charts showing the proportions of each group for each cluster
+stackedBarByClust = function(df, vals) {
+  reattachData = reattachData(df, dfObjectiveOnly)
+  countOfReattached = countInClusters(reattachData, vals)
+  valProportionsReattached = countOfReattached %>%
+    group_by(cluster) %>%
+    mutate(proportion = countInClusts/sum(countInClusts))
+  
+  ggplot(valProportionsReattached, aes(x = cluster, y =proportion, fill = Group), na.rm =TRUE) +
+    geom_bar(position = "fill",stat = 'identity', na.rm = TRUE) +
+    labs(x = "Cluster", y = "Proportion", title = paste("Distribution of ",  paste(vals, collapse = " and ") ," Across Clusters", sep = ""))
+}
+
+```
+
+
+Now functionality will be made to get average for given values in each cluster. 
+```{r}
+#Function to show an average metric in each cluster
+avgMetricsinClusts = function(dfInput, vals){
+  reattached = reattachData(dfInput, df)
+  processedData = reattached %>%
+    select(cluster, vals) %>%
+    group_by(cluster) %>%
+    summarise_at(vars(vals), mean) %>%
+    gather(key= "Attribute", value = "Value", vals)
+  
+  
+  ggplot(processedData, aes(x = cluster, y =Value, fill = Attribute), na.rm =TRUE) +
+    geom_bar(stat="identity",position = "dodge", na.rm = TRUE) +
+    labs(x = "Cluster", y = "Average Value", title = paste("Average  ",  paste(vals, collapse = " and ") ," in Each Cluster", sep = ""))
+}
 
 ```
 
@@ -248,6 +300,15 @@ print(maroon5Appearances)
 ```
 
 
+```{r}
+avgMetricsinClusts(pcaSpotifyAllCompleteClusters, c("avgAcousticness", "avgSpeechiness"))
+```
 
+
+```{r}
+stackedBarByClust(pcaSpotifyAllCompleteClusters, c("Gender", "Group.Solo"))
+stackedBarByClust(pcaSpotifyAllCompleteClusters, c("Gender", "ReleaseYear"))
+stackedBarByClust(pcaSpotifyAllCompleteClusters, c("Group.Solo", "ReleaseYear"))
+```
 
 
