@@ -17,6 +17,7 @@ library(mltools)
 library(rlang)
 library(reshape2)
 library(stringi)
+set.seed(41)
 ```
 
 
@@ -282,7 +283,7 @@ print(maroon5Appearances)
 
 The principle components of the complete set of spotify metrics and the objective measures are clustered here using k-means. 
 ```{r}
-pcaSpotifyAllCompleteClusters = kMeansPipeline(data.frame(pcsSpotifyAndObjectives$x[,1:3]), 5)
+pcaSpotifyAllCompleteClusters = kMeansPipeline(data.frame(pcsSpotifyAndObjectives$x[,1:3]), 6)
 #pcaSpotifyAllCompleteClusters
 plot(pcsSpotifyAndObjectives$x[, c(2,3)], col=pcaSpotifyAllCompleteClusters$cluster, pch=16)
 #clustDf = clustDf[order(clustDf$cluster),]
@@ -301,7 +302,9 @@ print(maroon5Appearances)
 
 
 ```{r}
-avgMetricsinClusts(pcaSpotifyAllCompleteClusters, c("avgAcousticness", "avgSpeechiness"))
+avgMetricsinClusts(pcaSpotifyAllCompleteClusters, c("avgDanceability", "avgEnergy", "avgAcousticness", "avgSpeechiness", "avgInstrumentalness", "presenceUncommonTS", "proportionExplicit", "numGrammys"))
+avgMetricsinClusts(pcaSpotifyAllCompleteClusters, c("numSongsOnAlb", "totalExplicit", "NumAlbums"))
+avgMetricsinClusts(pcaSpotifyAllCompleteClusters, c("avgLoudness", "rangeLoudness"))
 ```
 
 
