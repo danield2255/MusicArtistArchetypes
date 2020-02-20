@@ -206,7 +206,7 @@ stackedBarByClust = function(df, vals) {
   
   ggplot(valProportionsReattached, aes(x = cluster, y =proportion, fill = Group), na.rm =TRUE) +
     geom_bar(position = "fill",stat = 'identity', na.rm = TRUE) +
-    labs(x = "Cluster", y = "Proportion", title = paste("Distribution of ",  paste(vals, collapse = " and ") ," Across Clusters", sep = ""))
+    labs(x = "Cluster", y = "Proportion", title = paste("Distribution of ",  paste(vals, collapse = " and ") ," In Each Cluster", sep = ""))
 }
 
 ```
@@ -218,7 +218,8 @@ Now functionality will be made to get average for given values in each cluster.
 avgMetricsinClusts = function(dfInput, vals){
   reattached = reattachData(dfInput, df)
   processedData = reattached %>%
-    select(cluster, vals) %>%
+    select(cluster, vals) %>% 
+    mutate_at(vars(vals), funs(scale)) %>%####Values standardized before groupby and mean
     group_by(cluster) %>%
     summarise_at(vars(vals), mean) %>%
     gather(key= "Attribute", value = "Value", vals)
@@ -283,10 +284,11 @@ print(maroon5Appearances)
 
 The principle components of the complete set of spotify metrics and the objective measures are clustered here using k-means. 
 ```{r}
-pcaSpotifyAllCompleteClusters = kMeansPipeline(data.frame(pcsSpotifyAndObjectives$x[,1:3]), 6)
+pcaSpotifyAllCompleteClusters = kMeansPipeline(data.frame(pcsSpotifyAndObjectives$x[,1:4]), 5)
 #pcaSpotifyAllCompleteClusters
-plot(pcsSpotifyAndObjectives$x[, c(2,3)], col=pcaSpotifyAllCompleteClusters$cluster, pch=16)
+plot(pcsSpotifyAndObjectives$x[, c(3,4)], col=pcaSpotifyAllCompleteClusters$cluster, pch=16)
 #clustDf = clustDf[order(clustDf$cluster),]
+#pcaSpotifyAllCompleteClusters
 ```
 
 ```{r}
@@ -302,16 +304,22 @@ print(maroon5Appearances)
 
 
 ```{r}
-avgMetricsinClusts(pcaSpotifyAllCompleteClusters, c("avgDanceability", "avgEnergy", "avgAcousticness", "avgSpeechiness", "avgInstrumentalness", "presenceUncommonTS", "proportionExplicit", "numGrammys"))
+avgMetricsinClusts(pcaSpotifyAllCompleteClusters, c("avgDanceability", "avgEnergy", "avgAcousticness", "avgSpeechiness", "avgInstrumentalness", "presenceUncommonTS", "proportionExplicit", "avgLiveness", "avgValence", "rangeValence"))
+avgMetricsinClusts(pcaSpotifyAllCompleteClusters, c("avgEnergy", "avgAcousticness"))
+avgMetricsinClusts(pcaSpotifyAllCompleteClusters, c("avgSpeechiness", "proportionExplicit"))
+avgMetricsinClusts(pcaSpotifyAllCompleteClusters, c("numGrammys", "presenceUncommonTS"))
 avgMetricsinClusts(pcaSpotifyAllCompleteClusters, c("numSongsOnAlb", "totalExplicit", "NumAlbums"))
 avgMetricsinClusts(pcaSpotifyAllCompleteClusters, c("avgLoudness", "rangeLoudness"))
 ```
 
 
 ```{r}
-stackedBarByClust(pcaSpotifyAllCompleteClusters, c("Gender", "Group.Solo"))
-stackedBarByClust(pcaSpotifyAllCompleteClusters, c("Gender", "ReleaseYear"))
-stackedBarByClust(pcaSpotifyAllCompleteClusters, c("Group.Solo", "ReleaseYear"))
+stackedBarByClust(pcaSpotifyAllCompleteClusters, c("Gender"))
+stackedBarByClust(pcaSpotifyAllCompleteClusters, c("Group.Solo"))
+stackedBarByClust(pcaSpotifyAllCompleteClusters, c("ReleaseYear"))
+#stackedBarByClust(pcaSpotifyAllCompleteClusters, c("Gender", "Group.Solo"))
+#stackedBarByClust(pcaSpotifyAllCompleteClusters, c("Gender", "ReleaseYear"))
+#stackedBarByClust(pcaSpotifyAllCompleteClusters, c("Group.Solo", "ReleaseYear"))
 ```
 
 
