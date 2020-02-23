@@ -10,7 +10,9 @@ knitr::opts_chunk$set(echo = FALSE, warning = FALSE)
 
 ```{r, include=FALSE}
 library(tidyverse)
+library(ggridges)
 library(ggplot2)
+library(viridis)
 library(RColorBrewer)
 library(dplyr) 
 library(mltools)
@@ -23,37 +25,27 @@ set.seed(41)
 
 ## Data Subset Creations
 One dataset is made to include only the average of all the subjective spotify measures and then another is made to include more expressions(maximums and ranges) of some of these measures. 
-```{r, include=FALSE}
+```{r}
 df = read_csv("Data/attrsOfAlbsFinal.csv")
 df = within(df,  id <- paste(Album, Artist, sep="---"))
 
-head(df)
-#data of only average spotify metrics
-dfSpotifySubMetrics = df %>%
-  select(id, avgAcousticness, avgDanceability, avgEnergy, avgInstrumentalness, avgLiveness, avgLoudness, avgSpeechiness, avgValence)
-
-# data with appropriate measures of spotify metrics (averages, max, ranges)
-dfSpotifyAllMeasures = df %>%
-  select(id, avgAcousticness, maxAcousticnessTrack, avgDanceability, maxDanceabilityTrack, rangeEnergy, avgEnergy, maxInstrumentalnessTrack, avgInstrumentalness, avgLiveness, maxLivenessTrack, avgLoudness, rangeLoudness, avgSpeechiness, maxSpeechinessTrack, avgValence, rangeValence)
-
-#data with all spotify metrics and some objective measures
-dfSpotifyAndMusicData = df %>%
-  select(id, numSongsOnAlb, totalDurationSeconds, avgTempo, rangeTempo, moreCommonMajMin, presenceUncommonTS, totalExplicit, proportionExplicit, avgAcousticness, maxAcousticnessTrack, avgDanceability, maxDanceabilityTrack, rangeEnergy, avgEnergy, maxInstrumentalnessTrack, avgInstrumentalness, avgLiveness, maxLivenessTrack, avgLoudness, rangeLoudness, avgSpeechiness, maxSpeechinessTrack, avgValence, rangeValence)
-
-#data with all 
+#data with all elements artist has control over when making album
 dfAll = df %>%
-  select(id, Gender, Group.Solo, RiaaStatus, Label, numGrammys, numSongsOnAlb, totalDurationSeconds, avgTempo, rangeTempo, moreCommonMajMin, presenceUncommonTS, totalExplicit, proportionExplicit, avgAcousticness, maxAcousticnessTrack, avgDanceability, maxDanceabilityTrack, rangeEnergy, avgEnergy, maxInstrumentalnessTrack, avgInstrumentalness, avgLiveness, maxLivenessTrack, avgLoudness, rangeLoudness, avgSpeechiness, maxSpeechinessTrack, avgValence, rangeValence)
+  select(id, numSongsOnAlb, totalDurationSeconds, avgTempo, rangeTempo, moreCommonMajMin, presenceUncommonTS, totalExplicit, proportionExplicit, avgAcousticness, maxAcousticnessTrack, avgDanceability, maxDanceabilityTrack, rangeEnergy, avgEnergy, maxInstrumentalnessTrack, avgInstrumentalness, avgLiveness, maxLivenessTrack, avgLoudness, rangeLoudness, avgSpeechiness, maxSpeechinessTrack, avgValence, rangeValence)
 
 
 #subset that is really just the objective data
 dfObjectiveOnly = df %>%
-  select(id, ReleaseYear, Genres, Gender, Group.Solo, RiaaStatus, Label, numGrammys, numSongsOnAlb, totalDurationSeconds)
+  select(id, ReleaseYear, Genres, Gender, Group.Solo, RiaaStatus, Label, numGrammys, NumAlbums, YearFirstAlbum, popularGenres)
 
 ```
 
-The genre of the album will be inferred by grabbing the larger, more general common genre names from the list of all the songs genres in the album. First the top 10 genres from all of the albums will be determined. Ultimately each album will be categorized with these 10 genres when applicable. 
-```{r, include=FALSE}
+
+
+The genre of the album will be inferred by grabbing the larger, more general common genre names from the list of all the songs genres in the album. First the top 10 genres from all of the albums will be determined. Ultimately each album will be categorized with these 10 genres when applicable. We will try to establish a primary, secondary, and tertiary genre where applicable. 
+```{r, include = FALSE}
 dfObjectiveOnly["Genres"] = lapply(dfObjectiveOnly["Genres"], gsub, pattern = "hip hop", replacement = "hip-hop", fixed = TRUE) 
+
 
 mostCommonGenres = dfObjectiveOnly["Genres"] %>%
   tolower() %>%
@@ -66,6 +58,7 @@ mostCommonGenres = dfObjectiveOnly["Genres"] %>%
 mostCommonGenres = mostCommonGenres[-1] %>%
   head(10) %>%
   names()
+
 
 commonGenreFinder = function(genres){
   if (is.na(genres)){
@@ -80,11 +73,39 @@ commonGenreFinder = function(genres){
   return (ret)
 }
 
+topGenreFinder = function(genres){
+  if (is.na(genres)){
+    topGenres = c("Other")
+    return (topGenres)
+  }
+  commonGenrePresence = str_count(genres, mostCommonGenres)
+  top3 = order(commonGenrePresence, decreasing = TRUE)[1:3]
+  for (i in top3){
+    if (commonGenrePresence[i] == 0){
+      top3 = top3[top3 != i]
+    }
+  }
+  if (is_empty(top3)){
+    topGenres = c("Other")
+  } else{
+    topGenres = mostCommonGenres[top3]    
+  }
+  return (topGenres)
+}
 
-GeneralGenres = lapply(1:nrow(dfObjectiveOnly), function(rNum) { commonGenreFinder(dfObjectiveOnly[rNum, "Genres"])})
-dfObjectiveOnly$GeneralGenres= do.call(rbind, GeneralGenres)
+
+Genres = lapply(1:nrow(dfObjectiveOnly), function(rNum) { topGenreFinder(dfObjectiveOnly[rNum, "Genres"])})
+
+genreDf = data.frame(t(sapply(Genres, `length<-`, 3)))
+names(genreDf) = c("Genre1", "Genre2", "Genre3")
+
+dfObjectiveOnly= cbind(dfObjectiveOnly,genreDf)
 dfObjectiveOnly = dfObjectiveOnly %>% select(-Genres)
 ```
+
+
+
+
 
 
 ## PCA
@@ -100,54 +121,23 @@ pcaOfData = function(df){
 }
 ```
 
-First, PCA was applied to the smaller subest of averages only of the spotify metrics. 
+
+First, PCA was applied to the data with all spotify metrics and the objective average metrics. 
 ```{r}
-pcsSpotifySubMetrics = pcaOfData(dfSpotifySubMetrics)
-#summary(pcsSpotifySubMetrics)
-pcsSpotifySubMetrics$rotation[,1:5]
-```
-Here we will define that the PC's as follows:
-- PC1: How low energy, and acoustic an album is
-- PC2: Relatively neutral and poorly defined component
-- PC3: How very likely something is a live album
-- PC4: How instrumentally heavy and speech heavy an album is
-- PC5: How live, instrumental, and happy an album is
-
-
-
-Next, PCA was applied to the larger collection of functions of the spotify metrics. 
-```{r}
-pcsSpotifyAll = pcaOfData(dfSpotifyAllMeasures)
-#summary(pcsSpotifyAll)
-pcsSpotifyAll$rotation[,1:5]
-```
-Here we will define that the PC's as follows:
-- PC1: How acoustic, and generally low energy and mellow an album is 
-- PC2: The levels of dancability and speechiness are unimportant in defining this PC, but energy and loudness may 
-- PC3: Not measuring live albums, but how happy and dancable an album may be
-- PC4: Very strongly measuring the max instrumentalness and range of instrumentalness in an album, as well as somewhat how dancable
-- PC5: How sad and speechy an album is with a low range of energy
-
-
-Next, PCA was applied to the data with all spotify metrics and the objective average metrics. 
-```{r}
-pcsSpotifyAndObjectives = pcaOfData(dfSpotifyAndMusicData)
+pcsSpotifyAndObjectives = pcaOfData(dfAll)
 pcsSpotifyAndObjectives$rotation[,1:5]
 ```
 Here we will define that the PC's as follows:
-- PC1: Measure of how explicit an album is compiled with how dancable and speechy it is, potentially a score of something being a rap album
+- PC1: Measure of how explicit an album is compiled with how dancable and speechy it is. 
 - PC2: Measure of how low energy, low volume, high dynamic, and acoustic an album is.
-- PC3: How short an album is, with also measuring how acoustic and dancable it is.
+- PC3: How short an album is, and how its very likely not live with also measuring how acoustic, dancable, and low energy it is.
 - PC4: Measure of how long, instrumental, happy, and dancable an album is that is not live
 - PC5: Measure of how short, explicit, instrumental, slow, and sad an album is.
 
 
-Next, PCA will be applied to all of our data.  TODO:Need to dummify the categorical vars
-
-
 
 ## K-Means Clustering and Case Studies
-What will really be focused on here is the clustering of the PC's as this will reduce the affect of the noise. 
+Clustering the principle components will hopefully reduce the affect of noise in the data. 
 ```{r}
 kMeansPipeline = function(df, numClusts){
   dataSub = as.data.frame(df)
@@ -209,6 +199,16 @@ stackedBarByClust = function(df, vals) {
     labs(x = "Cluster", y = "Proportion", title = paste("Distribution of ",  paste(vals, collapse = " and ") ," In Each Cluster", sep = ""))
 }
 
+numericDistributionEachClust = function(df, val){
+  reattached = reattachData(df, dfObjectiveOnly)
+  
+  ggplot(reattached, aes_string(x = val, y ="cluster", fill = "..x.."), na.rm =TRUE) +
+    geom_density_ridges_gradient(scale = .75, rel_min_height = 0.01) +
+    scale_fill_viridis(option = "C") +
+    labs(title = paste('Distribution of Album ', val, " Across Clusters")) +
+    theme(legend.position="none")
+}
+
 ```
 
 
@@ -233,66 +233,18 @@ avgMetricsinClusts = function(dfInput, vals){
 ```
 
 
-The principle components of only the average spotify metrics are clustered. 
+
+
+The principle components of the complete set of spotify metrics and the objective measures are clustered here using k-means. The 10 priniciple components will be available to cluster, but changing the number of top PC's we cluster on should hopefully not change the clusters too much. Different combinations of the first N principle components and different values of K will be tested to see what factors are defining the clusters most prominantly. The greatest decrease in variance explained by far is after the 2nd principle component, and the next notable decrease is between the 5th and 6th principle. For these reasons, the first 5 principle components could have potential to be the most useful; therefore, various clustering combinations using the first 5 principle components will be compared. Given a constant number of clusters K, we should expect a reasonably similar pattern in the traits of each cluster still. 
+
+First the clustering will be done using only the 1st and 2nd principle components. The curve of the withing group sum of square error slightly suggests that the best number of clusters is 4, so that will be used. 
 ```{r}
-pcaSpotifySubClusters = kMeansPipeline(data.frame(pcsSpotifySubMetrics$x[,1:3]), 5)
-#pcaSpotifySubClusters
-plot(pcsSpotifySubMetrics$x[,2:3], col=pcaSpotifySubClusters$cluster, pch=16)
+first2Pcs4Clusts = kMeansPipeline(data.frame(pcsSpotifyAndObjectives$x[,1:3]), 4)
+plot(pcsSpotifyAndObjectives$x[, c(2,3)], col=first2Pcs4Clusts$cluster, pch=16)
 ```
-
+Some small testing of atrist album distributions across the clusters. 
 ```{r}
-spotifySubReattached = reattachData(pcaSpotifySubClusters, dfObjectiveOnly)
-#print(spotifySubReattached)
-a = countInClusters(spotifySubReattached, c("Gender"))
-print(a)
-```
-
-
-
-```{r}
-artistCount=artistClusterCount(pcaSpotifySubClusters)
-johnMayerAppearances = artistCount %>%
-  filter(Artist == "John Mayer")
-print(johnMayerAppearances)
-
-maroon5Appearances = artistCount %>%
-  filter(Artist == "Maroon 5")
-print(maroon5Appearances)
-```
-
-
-The principle components of the complete set of spotify metrics are clustered here using k-means. 
-```{r}
-pcaSpotifyAllClusters = kMeansPipeline(data.frame(pcsSpotifyAll$x[,1:3]), 5)
-#pcaSpotifyAllClusters
-plot(pcsSpotifyAll$x[, c(2,3)], col=pcaSpotifyAllClusters$cluster, pch=16)
-#clustDf = clustDf[order(clustDf$cluster),]
-```
-```{r}
-artistCount=artistClusterCount(pcaSpotifyAllClusters)
-johnMayerAppearances = artistCount %>%
-  filter(Artist == "John Mayer")
-print(johnMayerAppearances)
-
-maroon5Appearances = artistCount %>%
-  filter(Artist == "Maroon 5")
-print(maroon5Appearances)
-```
-
-
-
-
-The principle components of the complete set of spotify metrics and the objective measures are clustered here using k-means. 
-```{r}
-pcaSpotifyAllCompleteClusters = kMeansPipeline(data.frame(pcsSpotifyAndObjectives$x[,1:4]), 5)
-#pcaSpotifyAllCompleteClusters
-plot(pcsSpotifyAndObjectives$x[, c(3,4)], col=pcaSpotifyAllCompleteClusters$cluster, pch=16)
-#clustDf = clustDf[order(clustDf$cluster),]
-#pcaSpotifyAllCompleteClusters
-```
-
-```{r}
-artistCount=artistClusterCount(pcaSpotifyAllCompleteClusters)
+artistCount=artistClusterCount(first2Pcs4Clusts)
 johnMayerAppearances = artistCount %>%
   filter(Artist == "John Mayer")
 print(johnMayerAppearances)
@@ -304,22 +256,119 @@ print(maroon5Appearances)
 
 
 ```{r}
-avgMetricsinClusts(pcaSpotifyAllCompleteClusters, c("avgDanceability", "avgEnergy", "avgAcousticness", "avgSpeechiness", "avgInstrumentalness", "presenceUncommonTS", "proportionExplicit", "avgLiveness", "avgValence", "rangeValence"))
-avgMetricsinClusts(pcaSpotifyAllCompleteClusters, c("avgEnergy", "avgAcousticness"))
-avgMetricsinClusts(pcaSpotifyAllCompleteClusters, c("avgSpeechiness", "proportionExplicit"))
-avgMetricsinClusts(pcaSpotifyAllCompleteClusters, c("numGrammys", "presenceUncommonTS"))
-avgMetricsinClusts(pcaSpotifyAllCompleteClusters, c("numSongsOnAlb", "totalExplicit", "NumAlbums"))
-avgMetricsinClusts(pcaSpotifyAllCompleteClusters, c("avgLoudness", "rangeLoudness"))
+avgMetricsinClusts(first2Pcs4Clusts, c("avgDanceability", "avgEnergy", "avgAcousticness", "avgSpeechiness", "avgInstrumentalness", "presenceUncommonTS", "proportionExplicit", "avgLiveness", "avgValence", "rangeValence", "numSongsOnAlb", "totalDurationSeconds", "avgTempo", "rangeTempo", "moreCommonMajMin", "proportionExplicit", "avgLoudness", "avgSpeechiness"))
+avgMetricsinClusts(first2Pcs4Clusts, c("avgEnergy", "avgAcousticness"))
+avgMetricsinClusts(first2Pcs4Clusts, c("avgSpeechiness", "proportionExplicit"))
+avgMetricsinClusts(first2Pcs4Clusts, c("numGrammys", "presenceUncommonTS"))
+avgMetricsinClusts(first2Pcs4Clusts, c("numSongsOnAlb", "totalExplicit", "NumAlbums"))
+avgMetricsinClusts(first2Pcs4Clusts, c("avgLoudness", "rangeLoudness"))
+```
+
+```{r}
+
+numericDistributionEachClust(first2Pcs4Clusts, 'ReleaseYear')
+```
+
+
+
+```{r}
+stackedBarByClust(first2Pcs4Clusts, c("Gender"))
+stackedBarByClust(first2Pcs4Clusts, c("Group.Solo"))
+stackedBarByClust(first2Pcs4Clusts, c("ReleaseYear"))
+#stackedBarByClust(first2Pcs4Clusts, c("Gender", "Group.Solo"))
+#stackedBarByClust(first2Pcs4Clusts, c("Gender", "ReleaseYear"))
+#stackedBarByClust(first2Pcs4Clusts, c("Group.Solo", "ReleaseYear"))
+```
+
+Now the first 3 principle components will be what is clustered on. The within groups sum of squares plot now shows that if may be useful to use 5 clusters. We will try using both 4 and 5 clusters to compare. The first will use 4 clusters. 
+```{r}
+first3Pcs4Clusts = kMeansPipeline(data.frame(pcsSpotifyAndObjectives$x[,1:4]), 4)
+plot(pcsSpotifyAndObjectives$x[, c(2,3)], col=first3Pcs4Clusts$cluster, pch=16)
+```
+
+```{r}
+avgMetricsinClusts(first3Pcs4Clusts, c("avgDanceability", "avgEnergy", "avgAcousticness", "avgSpeechiness", "avgInstrumentalness", "presenceUncommonTS", "proportionExplicit", "avgLiveness", "avgValence", "rangeValence", "numSongsOnAlb", "totalDurationSeconds", "avgTempo", "rangeTempo", "moreCommonMajMin", "proportionExplicit", "avgLoudness", "avgSpeechiness"))
+avgMetricsinClusts(first3Pcs4Clusts, c("avgEnergy", "avgAcousticness"))
+avgMetricsinClusts(first3Pcs4Clusts, c("avgSpeechiness", "proportionExplicit"))
+avgMetricsinClusts(first3Pcs4Clusts, c("numGrammys", "presenceUncommonTS"))
+avgMetricsinClusts(first3Pcs4Clusts, c("numSongsOnAlb", "totalExplicit", "NumAlbums"))
+avgMetricsinClusts(first3Pcs4Clusts, c("avgLoudness", "rangeLoudness"))
 ```
 
 
 ```{r}
-stackedBarByClust(pcaSpotifyAllCompleteClusters, c("Gender"))
-stackedBarByClust(pcaSpotifyAllCompleteClusters, c("Group.Solo"))
-stackedBarByClust(pcaSpotifyAllCompleteClusters, c("ReleaseYear"))
-#stackedBarByClust(pcaSpotifyAllCompleteClusters, c("Gender", "Group.Solo"))
-#stackedBarByClust(pcaSpotifyAllCompleteClusters, c("Gender", "ReleaseYear"))
-#stackedBarByClust(pcaSpotifyAllCompleteClusters, c("Group.Solo", "ReleaseYear"))
+stackedBarByClust(first3Pcs4Clusts, c("Gender"))
+stackedBarByClust(first3Pcs4Clusts, c("Group.Solo"))
+stackedBarByClust(first3Pcs4Clusts, c("ReleaseYear"))
+#stackedBarByClust(first3Pcs4Clusts, c("Gender", "Group.Solo"))
+#stackedBarByClust(first3Pcs4Clusts, c("Gender", "ReleaseYear"))
+#stackedBarByClust(first3Pcs4Clusts, c("Group.Solo", "ReleaseYear"))
 ```
+
+
+Now the same 3 principle components with 5 clusters. 
+```{r}
+first3Pcs5Clusts = kMeansPipeline(data.frame(pcsSpotifyAndObjectives$x[,1:4]), 5)
+plot(pcsSpotifyAndObjectives$x[, c(2,3)], col=first3Pcs5Clusts$cluster, pch=16)
+```
+```{r}
+head(dfAll)
+```
+
+
+```{r}
+avgMetricsinClusts(first3Pcs5Clusts, c("avgDanceability", "avgEnergy", "avgAcousticness", "avgSpeechiness", "avgInstrumentalness", "presenceUncommonTS", "proportionExplicit", "avgLiveness", "avgValence", "rangeValence", "numSongsOnAlb", "totalDurationSeconds", "avgTempo", "rangeTempo", "moreCommonMajMin", "proportionExplicit", "avgLoudness", "avgSpeechiness"))
+avgMetricsinClusts(first3Pcs5Clusts, c("avgEnergy", "avgAcousticness"))
+avgMetricsinClusts(first3Pcs5Clusts, c("avgSpeechiness", "proportionExplicit"))
+avgMetricsinClusts(first3Pcs5Clusts, c("numGrammys", "presenceUncommonTS"))
+avgMetricsinClusts(first3Pcs5Clusts, c("numSongsOnAlb", "totalExplicit", "NumAlbums"))
+avgMetricsinClusts(first3Pcs5Clusts, c("avgLoudness", "rangeLoudness"))
+```
+
+
+```{r}
+stackedBarByClust(first3Pcs5Clusts, c("Gender"))
+stackedBarByClust(first3Pcs5Clusts, c("Group.Solo"))
+stackedBarByClust(first3Pcs5Clusts, c("ReleaseYear"))
+#stackedBarByClust(first3Pcs5Clusts, c("Gender", "Group.Solo"))
+#stackedBarByClust(first3Pcs5Clusts, c("Gender", "ReleaseYear"))
+#stackedBarByClust(first3Pcs5Clusts, c("Group.Solo", "ReleaseYear"))
+```
+
+
+
+
+Now the first 5 principle components will be clustered on. 
+```{r}
+first5Pcs4Clusts = kMeansPipeline(data.frame(pcsSpotifyAndObjectives$x[,1:6]), 4)
+plot(pcsSpotifyAndObjectives$x[, c(2,3)], col=first5Pcs4Clusts$cluster, pch=16)
+```
+
+```{r}
+avgMetricsinClusts(first5Pcs4Clusts, c("avgDanceability", "avgEnergy", "avgAcousticness", "avgSpeechiness", "avgInstrumentalness", "presenceUncommonTS", "proportionExplicit", "avgLiveness", "avgValence", "rangeValence", "numSongsOnAlb", "totalDurationSeconds", "avgTempo", "rangeTempo", "moreCommonMajMin", "proportionExplicit", "avgLoudness", "avgSpeechiness"))
+avgMetricsinClusts(first5Pcs4Clusts, c("avgEnergy", "avgAcousticness"))
+avgMetricsinClusts(first5Pcs4Clusts, c("avgSpeechiness", "proportionExplicit"))
+avgMetricsinClusts(first5Pcs4Clusts, c("numGrammys", "presenceUncommonTS"))
+avgMetricsinClusts(first5Pcs4Clusts, c("numSongsOnAlb", "totalExplicit", "NumAlbums"))
+avgMetricsinClusts(first5Pcs4Clusts, c("avgLoudness", "rangeLoudness"))
+```
+
+
+```{r}
+stackedBarByClust(first5Pcs4Clusts, c("Gender"))
+stackedBarByClust(first5Pcs4Clusts, c("Group.Solo"))
+stackedBarByClust(first5Pcs4Clusts, c("ReleaseYear"))
+#stackedBarByClust(first5Pcs4Clusts, c("Gender", "Group.Solo"))
+#stackedBarByClust(first5Pcs4Clusts, c("Gender", "ReleaseYear"))
+#stackedBarByClust(first5Pcs4Clusts, c("Group.Solo", "ReleaseYear"))
+```
+
+
+
+
+
+
+
+
 
 
