@@ -60,19 +60,6 @@ mostCommonGenres = mostCommonGenres[-1] %>%
   names()
 
 
-commonGenreFinder = function(genres){
-  if (is.na(genres)){
-    return ("Other")
-  }
-  commonGenrePresence = str_count(genres, mostCommonGenres)
-  present = mostCommonGenres[commonGenrePresence != 0]
-  ret = stri_paste(present, collapse = ", ")
-  if (length(ret) < 1){
-    return ("Other")
-  }
-  return (ret)
-}
-
 topGenreFinder = function(genres){
   if (is.na(genres)){
     topGenres = c("Other")
@@ -101,6 +88,21 @@ names(genreDf) = c("Genre1", "Genre2", "Genre3")
 
 dfObjectiveOnly= cbind(dfObjectiveOnly,genreDf)
 dfObjectiveOnly = dfObjectiveOnly %>% select(-Genres)
+```
+
+```{r}
+names(dfObjectiveOnly)
+```
+
+
+
+There is also data for each year on what the estimated most three most popular genres of the year were. For each album it will be determined if the album's primary genre (Genre1) was one of these three most popular. 
+```{r}
+dfObjectiveOnly$Genre1InYearTop = ifelse(stri_detect_fixed(dfObjectiveOnly$popularGenres, dfObjectiveOnly$Genre1), TRUE, FALSE)
+```
+Also, because there is data on the release year of the album and the year of the artist's first album release, it can be worthwhile to consider how long an artist has been active on each current release by calculating the years since the first album. 
+```{r}
+dfObjectiveOnly$YearsSinceFirst = dfObjectiveOnly$ReleaseYear - dfObjectiveOnly$YearFirstAlbum
 ```
 
 
@@ -209,6 +211,8 @@ numericDistributionEachClust = function(df, val){
     theme(legend.position="none")
 }
 
+
+
 ```
 
 
@@ -265,8 +269,16 @@ avgMetricsinClusts(first2Pcs4Clusts, c("avgLoudness", "rangeLoudness"))
 ```
 
 ```{r}
-
-numericDistributionEachClust(first2Pcs4Clusts, 'ReleaseYear')
+numericDistributionEachClust2 = function(df, val){
+  reattached = reattachData(df, dfObjectiveOnly)
+  
+  ggplot(reattached, aes_string(x = val, y ="cluster"), na.rm =TRUE) +
+    geom_density_ridges(alpha = 0.6, stat="binline", bins=20) +
+    scale_fill_viridis(option = "C") +
+    labs(title = paste('Distribution of Album ', val, " Across Clusters")) +
+    theme(legend.position="none")
+}
+numericDistributionEachClust2(first2Pcs4Clusts, 'ReleaseYear')
 ```
 
 
