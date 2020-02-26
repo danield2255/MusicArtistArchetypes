@@ -302,6 +302,8 @@ Now the first 3 principle components will be what is clustered on. The within gr
 ```{r}
 first3Pcs4Clusts = kMeansPipeline(data.frame(pcsSpotifyAndObjectives$x[,1:4]), 4)
 plot(pcsSpotifyAndObjectives$x[, c(2,3)], col=first3Pcs4Clusts$cluster, pch=16)
+plot(pcsSpotifyAndObjectives$x[, c(2,4)], col=first3Pcs4Clusts$cluster, pch=16)
+plot(pcsSpotifyAndObjectives$x[, c(3,4)], col=first3Pcs4Clusts$cluster, pch=16)
 ```
 
 ```{r}
@@ -334,6 +336,8 @@ Now the same 3 principle components with 5 clusters.
 ```{r}
 first3Pcs5Clusts = kMeansPipeline(data.frame(pcsSpotifyAndObjectives$x[,1:4]), 5)
 plot(pcsSpotifyAndObjectives$x[, c(2,3)], col=first3Pcs5Clusts$cluster, pch=16)
+plot(pcsSpotifyAndObjectives$x[, c(2,4)], col=first3Pcs5Clusts$cluster, pch=16)
+plot(pcsSpotifyAndObjectives$x[, c(3,4)], col=first3Pcs5Clusts$cluster, pch=16)
 ```
 
 
@@ -367,6 +371,15 @@ Now the first 5 principle components will be clustered on. First 4 clusters will
 ```{r}
 first5Pcs4Clusts = kMeansPipeline(data.frame(pcsSpotifyAndObjectives$x[,1:6]), 4)
 plot(pcsSpotifyAndObjectives$x[, c(2,3)], col=first5Pcs4Clusts$cluster, pch=16)
+plot(pcsSpotifyAndObjectives$x[, c(2,4)], col=first5Pcs4Clusts$cluster, pch=16)
+plot(pcsSpotifyAndObjectives$x[, c(2,5)], col=first5Pcs4Clusts$cluster, pch=16)
+plot(pcsSpotifyAndObjectives$x[, c(2,6)], col=first5Pcs4Clusts$cluster, pch=16)
+plot(pcsSpotifyAndObjectives$x[, c(3,4)], col=first5Pcs4Clusts$cluster, pch=16)
+plot(pcsSpotifyAndObjectives$x[, c(3,5)], col=first5Pcs4Clusts$cluster, pch=16)
+plot(pcsSpotifyAndObjectives$x[, c(3,6)], col=first5Pcs4Clusts$cluster, pch=16)
+plot(pcsSpotifyAndObjectives$x[, c(4,5)], col=first5Pcs4Clusts$cluster, pch=16)
+plot(pcsSpotifyAndObjectives$x[, c(4,6)], col=first5Pcs4Clusts$cluster, pch=16)
+plot(pcsSpotifyAndObjectives$x[, c(5,6)], col=first5Pcs4Clusts$cluster, pch=16)
 ```
 
 ```{r}
@@ -400,6 +413,15 @@ The number of clusters will be increased until 7. Here is 5.
 ```{r}
 first5Pcs5Clusts = kMeansPipeline(data.frame(pcsSpotifyAndObjectives$x[,1:6]), 5)
 plot(pcsSpotifyAndObjectives$x[, c(2,3)], col=first5Pcs5Clusts$cluster, pch=16)
+plot(pcsSpotifyAndObjectives$x[, c(2,4)], col=first5Pcs5Clusts$cluster, pch=16)
+plot(pcsSpotifyAndObjectives$x[, c(2,5)], col=first5Pcs5Clusts$cluster, pch=16)
+plot(pcsSpotifyAndObjectives$x[, c(2,6)], col=first5Pcs5Clusts$cluster, pch=16)
+plot(pcsSpotifyAndObjectives$x[, c(3,4)], col=first5Pcs5Clusts$cluster, pch=16)
+plot(pcsSpotifyAndObjectives$x[, c(3,5)], col=first5Pcs5Clusts$cluster, pch=16)
+plot(pcsSpotifyAndObjectives$x[, c(3,6)], col=first5Pcs5Clusts$cluster, pch=16)
+plot(pcsSpotifyAndObjectives$x[, c(4,5)], col=first5Pcs5Clusts$cluster, pch=16)
+plot(pcsSpotifyAndObjectives$x[, c(4,6)], col=first5Pcs5Clusts$cluster, pch=16)
+plot(pcsSpotifyAndObjectives$x[, c(5,6)], col=first5Pcs5Clusts$cluster, pch=16)
 ```
 
 ```{r}
@@ -431,6 +453,15 @@ Now with 6 clusters.
 ```{r}
 first5Pcs6Clusts = kMeansPipeline(data.frame(pcsSpotifyAndObjectives$x[,1:6]), 6)
 plot(pcsSpotifyAndObjectives$x[, c(2,3)], col=first5Pcs6Clusts$cluster, pch=16)
+plot(pcsSpotifyAndObjectives$x[, c(2,4)], col=first5Pcs6Clusts$cluster, pch=16)
+plot(pcsSpotifyAndObjectives$x[, c(2,5)], col=first5Pcs6Clusts$cluster, pch=16)
+plot(pcsSpotifyAndObjectives$x[, c(2,6)], col=first5Pcs6Clusts$cluster, pch=16)
+plot(pcsSpotifyAndObjectives$x[, c(3,4)], col=first5Pcs6Clusts$cluster, pch=16)
+plot(pcsSpotifyAndObjectives$x[, c(3,5)], col=first5Pcs6Clusts$cluster, pch=16)
+plot(pcsSpotifyAndObjectives$x[, c(3,6)], col=first5Pcs6Clusts$cluster, pch=16)
+plot(pcsSpotifyAndObjectives$x[, c(4,5)], col=first5Pcs6Clusts$cluster, pch=16)
+plot(pcsSpotifyAndObjectives$x[, c(4,6)], col=first5Pcs6Clusts$cluster, pch=16)
+plot(pcsSpotifyAndObjectives$x[, c(5,6)], col=first5Pcs6Clusts$cluster, pch=16)
 ```
 
 ```{r}
@@ -461,6 +492,15 @@ Now with 7.
 ```{r}
 first5Pcs7Clusts = kMeansPipeline(data.frame(pcsSpotifyAndObjectives$x[,1:6]), 7)
 plot(pcsSpotifyAndObjectives$x[, c(2,3)], col=first5Pcs7Clusts$cluster, pch=16)
+plot(pcsSpotifyAndObjectives$x[, c(2,4)], col=first5Pcs7Clusts$cluster, pch=16)
+plot(pcsSpotifyAndObjectives$x[, c(2,5)], col=first5Pcs7Clusts$cluster, pch=16)
+plot(pcsSpotifyAndObjectives$x[, c(2,6)], col=first5Pcs7Clusts$cluster, pch=16)
+plot(pcsSpotifyAndObjectives$x[, c(3,4)], col=first5Pcs7Clusts$cluster, pch=16)
+plot(pcsSpotifyAndObjectives$x[, c(3,5)], col=first5Pcs7Clusts$cluster, pch=16)
+plot(pcsSpotifyAndObjectives$x[, c(3,6)], col=first5Pcs7Clusts$cluster, pch=16)
+plot(pcsSpotifyAndObjectives$x[, c(4,5)], col=first5Pcs7Clusts$cluster, pch=16)
+plot(pcsSpotifyAndObjectives$x[, c(4,6)], col=first5Pcs7Clusts$cluster, pch=16)
+plot(pcsSpotifyAndObjectives$x[, c(5,6)], col=first5Pcs7Clusts$cluster, pch=16)
 ```
 
 ```{r}
