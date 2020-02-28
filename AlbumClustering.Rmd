@@ -1,5 +1,5 @@
 ---
-title: "Album Clustering"
+title: "Understanding Archetypes of Musical Albums with PCA and K-Means Clustering"
 author: "Daniel DeFoe"
 output: html_document
 ---
@@ -23,11 +23,17 @@ set.seed(41)
 ```
 
 
+## Intro
+Computational grouping through clustering could provide an interesting perspective to us about what music is similar and dissimilar. Human understanding of artistic likeness in music is often confined to labels such as genre, but how do we arrive at genre definition? The landscape of musical art is so vast and constantly evolving that it can be difficult to effectively compare and contrast large groups of content. There are so many variables which make up music that it would be hard for a human to consider them all effectively and appropriately. Clustering algorithms provide a reduced bias alternative method of grouping content, where the input considerations can be controlled. This is extremely useful because if what is important is considering the comparison of the music itself, then controlling the input to only be the artistic musical elements will limits the algorithm's view and base its groups only on these artistic elements. The limiting of input will ensure that the algorithm is not affected by the outside influencing factors that humans use as part of their method of grouping content. After groups are created, we can investigate what factors caused them to end up the way the did, and we can reconsider the data that we hid from the algorithm before the data was clustered. 
+
+This project will carry out clustering of music at the level of albums, with data of individual songs being aggregated by album. After all the aggregation 4,125 albums were considered. More detailed music data would likely produce more sophisticated groupings, but the data used to cluster was Spotify's API data of songs aggregated to the album level. Principle component analysis will first be carried out to consider combinations of variables which are most useful in separating the data, as this will hopefully reduce the effect of noise in the data. Then the top principle components which give together explain the greatest proportion of variance in the data will be clustered using K-means clustering. By clustering the principle components instead of the raw data we hope to have to better separated clusters than if we cluster the raw data points, thus better definitions for what these groups mean. 
+
 ## Data Subset Creations
 One dataset is made to include only the average of all the subjective spotify measures and then another is made to include more expressions(maximums and ranges) of some of these measures. 
-```{r}
+```{r, include=FALSE}
 df = read_csv("Data/attrsOfAlbsFinal.csv")
 df = within(df,  id <- paste(Album, Artist, sep="---"))
+
 
 #data with all elements artist has control over when making album
 dfAll = df %>%
@@ -94,11 +100,11 @@ dfObjectiveOnly = dfObjectiveOnly %>% select(-Genres)
 
 
 There is also data for each year on what the estimated most three most popular genres of the year were. For each album it will be determined if the album's primary genre (Genre1) was one of these three most popular. 
-```{r}
+```{r, include=FALSE}
 dfObjectiveOnly$Genre1InYearTop = ifelse(stri_detect_fixed(dfObjectiveOnly$popularGenres, dfObjectiveOnly$Genre1), TRUE, FALSE)
 ```
 Also, because there is data on the release year of the album and the year of the artist's first album release, it can be worthwhile to consider how long an artist has been active on each current release by calculating the years since the first album. 
-```{r}
+```{r, include=FALSE}
 dfObjectiveOnly$YearsSinceFirst = dfObjectiveOnly$ReleaseYear - dfObjectiveOnly$YearFirstAlbum
 ```
 
@@ -106,27 +112,34 @@ dfObjectiveOnly$YearsSinceFirst = dfObjectiveOnly$ReleaseYear - dfObjectiveOnly$
 
 
 
-
-## PCA
-First the dataset with the complete set of spotify measures was plugged into pca. The proportion of the variance captured in each principle component is seen in the summary. Will look at the rotation of the PC's to see the loadings of the PC's to each feature. Ths will be done to really define each principle component. 
-```{r}
+## Section 1: Principle Component Roadmap
+Principle component analysis (PCA) is a form of dimension reduction that takes extracts features from the whole set of input variables to measure how associated each variable is to one another and the relative importance of each of these variables and all of their combinations. The product of PCA is a matrix of loading values for each principle component. All of the principle components together account for 100% of the variance in the data, but the purpose of PCA usually is to take as few principle components as possible to explain the most variance as possible. This means we will ultimately be trying to maximize this trade-off of number of principle components versus proportion of the data's variance explained. The dataset with the complete set of Spotify measures was plugged into PCA and the proportion of the variance captured in each principle component is seen in the barplot. 
+```{r, include=FALSE}
 pcaOfData = function(df){
   ids = df[,1]
   dfSub = df[,-1]
-  pcas = prcomp(dfSub, center = TRUE, scale. = TRUE)
-  plot(pcas)
-  pcas$x = cbind(ids, data.frame(pcas$x))
-  return (pcas)
+  pca = prcomp(dfSub, center = TRUE, scale. = TRUE)
+  propExplained = pca$sdev^2/sum(pca$sdev^2)
+  barplot(propExplained, xlab = "Principle Component", ylab = "Proportion Variance Explained", main="Variance Explained By Each PC",ylim = c(0, 0.3),xlim = c(0, 11), names.arg = seq(1:24))
+  pca$x = cbind(ids, data.frame(pca$x))
+  return (pca)
 }
+
 ```
 
-
-First, PCA was applied to the data with all spotify metrics and the objective average metrics. 
 ```{r}
 pcsSpotifyAndObjectives = pcaOfData(dfAll)
+```
+
+It looks like the first 2 principle components are explaining almost 40% of the variance and then the there is a significant decrease in the proportion explained by PC 2 and PC 3 and the next slightly less significant decrease is from PC 5 to PC 6. After the 5th principle component, such little variance is being explained by each following principlce component that there would likely be more hinderence than value from them if they were considered in the analysis. For this reason, for the purposes of this investigation, subsets within the first 5 principle components will be considered. The different  The rotation of the principle components shows the vector loadings for the collection of features and a quick analysis of this will be done to attempt to loosely define each of the first 5 principle components. 
+
+
+```{r}
 pcsSpotifyAndObjectives$rotation[,1:5]
 ```
-Here we will define that the PC's as follows:
+
+
+Here we will define that the PC's can generally be considered as follows:
 - PC1: Measure of how explicit an album is compiled with how dancable and speechy it is. 
 - PC2: Measure of how low energy, low volume, high dynamic, and acoustic an album is.
 - PC3: How short an album is, and how its very likely not live with also measuring how acoustic, dancable, and low energy it is.
@@ -135,9 +148,9 @@ Here we will define that the PC's as follows:
 
 
 
-## K-Means Clustering and Case Studies
-Clustering the principle components will hopefully reduce the affect of noise in the data. 
-```{r}
+## Section 2: Clustering and Observation of Metadata Distributions
+Now that the data has gone through PCA and we have chosen the optimal number of potentially useful principle components and given them each loose definitions, now the data will go through unsupervised K-means clustering. As previously stated, we are clustering the principle components to hopefully reduce the effect of noise in the data from grouping the data effectively based on the most distincitive characteristic factors. 
+```{r, include=FALSE}
 kMeansPipeline = function(df, numClusts){
   dataSub = as.data.frame(df)
   dataSub = dataSub[,-1]
@@ -153,7 +166,7 @@ kMeansPipeline = function(df, numClusts){
 }
 ```
 
-```{r}
+```{r, include=FALSE}
 artistClusterCount = function(clusterData){
   artistCounts = clusterData %>%
     separate(id, c("Album", "Artist"), "---") %>%
@@ -165,7 +178,7 @@ artistClusterCount = function(clusterData){
 ```
 
 A function will be created to join the demographic and objective data back to the album names once they have been clustered. This will allow us to see the prevalence of traits in particular clusters. 
-```{r}
+```{r, include=FALSE}
 ###Function to rejoin two datasets
 reattachData = function(clustData, objectiveData){
   newData = clustData %>%
@@ -185,7 +198,7 @@ countInClusters = function(df, cols){
 }
 
 
-# chains previous functions to make stacked bar charts showing the proportions of each group for each cluster
+## chains previous functions to make stacked bar charts showing the proportions of each group for each cluster
 stackedBarByClust = function(df, vals) {
   reattachData = reattachData(df, dfObjectiveOnly)
   countOfReattached = countInClusters(reattachData, vals)
@@ -198,11 +211,24 @@ stackedBarByClust = function(df, vals) {
     labs(x = "Cluster", y = "Proportion", title = paste("Distribution of ",  paste(vals, collapse = " and ") ," In Each Cluster", sep = ""))
 }
 
+
+## a function to join back the objective data for each album and then see the distribution of a numeric value across clusters in a ridge density plot
 numericDistributionEachClust = function(df, val){
   reattached = reattachData(df, dfObjectiveOnly)
   
   ggplot(reattached, aes_string(x = val, y ="cluster", fill = "..x.."), na.rm =TRUE) +
     geom_density_ridges_gradient(scale = .75, rel_min_height = 0.01) +
+    scale_fill_viridis(option = "C") +
+    labs(title = paste('Distribution of Album ', val, " Across Clusters")) +
+    theme(legend.position="none")
+}
+
+## optional modification to the "numericDistributionEachClust" function if wanting it to be expressed as a histogrma ridge plot
+numericDistributionEachClust2 = function(df, val){
+  reattached = reattachData(df, dfObjectiveOnly)
+  
+  ggplot(reattached, aes_string(x = val, y ="cluster"), na.rm =TRUE) +
+    geom_density_ridges(alpha = 0.6, stat="binline", bins=20) +
     scale_fill_viridis(option = "C") +
     labs(title = paste('Distribution of Album ', val, " Across Clusters")) +
     theme(legend.position="none")
@@ -270,17 +296,7 @@ Clust2: Low speechiness, and low explicit. Has more country
 Clust3: High danceability, very high speechiness, very high propotion explicit, low tempo. There are many solo male artists. It is high in rap albums.
 Clust4: Long, high acousticness, high instrumentalness, low energy, low dancability, minor, quiet, slow, sad, and non-explicit 
 
-```{r}
-numericDistributionEachClust2 = function(df, val){
-  reattached = reattachData(df, dfObjectiveOnly)
-  
-  ggplot(reattached, aes_string(x = val, y ="cluster"), na.rm =TRUE) +
-    geom_density_ridges(alpha = 0.6, stat="binline", bins=20) +
-    scale_fill_viridis(option = "C") +
-    labs(title = paste('Distribution of Album ', val, " Across Clusters")) +
-    theme(legend.position="none")
-}
-```
+
 
 
 
@@ -406,6 +422,8 @@ numericDistributionEachClust(first5Pcs4Clusts, 'ReleaseYear')
 
 numericDistributionEachClust(first5Pcs4Clusts, 'YearsSinceFirst')
 ```
+
+
 
 
 
