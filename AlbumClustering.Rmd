@@ -149,7 +149,10 @@ Here we will define that the PC's can generally be considered as follows:
 
 
 ## Section 2: Clustering and Observation of Metadata Distributions
-Now that the data has gone through PCA and we have chosen the optimal number of potentially useful principle components and given them each loose definitions, now the data will go through unsupervised K-means clustering. As previously stated, we are clustering the principle components to hopefully reduce the effect of noise in the data from grouping the data effectively based on the most distincitive characteristic factors. 
+Now that the data has gone through PCA and we have chosen the optimal number of potentially useful principle components and given them each loose definitions, now the data will go through unsupervised K-means clustering. As previously stated, we are clustering the principle components to hopefully reduce the effect of noise in the data from grouping the data effectively based on the most distincitive characteristic factors. For each subset of principle components which we plug into K-means, the within group sum of squared error will be calculated and plotted against the number of clusters to see the optimal number of groups for the particular input.
+
+
+
 ```{r, include=FALSE}
 kMeansPipeline = function(df, numClusts){
   dataSub = as.data.frame(df)
@@ -166,6 +169,9 @@ kMeansPipeline = function(df, numClusts){
 }
 ```
 
+
+
+
 ```{r, include=FALSE}
 artistClusterCount = function(clusterData){
   artistCounts = clusterData %>%
@@ -177,7 +183,7 @@ artistClusterCount = function(clusterData){
 }
 ```
 
-A function will be created to join the demographic and objective data back to the album names once they have been clustered. This will allow us to see the prevalence of traits in particular clusters. 
+
 ```{r, include=FALSE}
 ###Function to rejoin two datasets
 reattachData = function(clustData, objectiveData){
@@ -239,7 +245,6 @@ numericDistributionEachClust2 = function(df, val){
 ```
 
 
-Now functionality will be made to get average for given values in each cluster. 
 ```{r}
 #Function to show an average metric in each cluster
 avgMetricsinClusts = function(dfInput, vals){
@@ -262,15 +267,15 @@ avgMetricsinClusts = function(dfInput, vals){
 
 
 
-The principle components of the complete set of spotify metrics and the objective measures are clustered here using k-means. The 10 priniciple components will be available to cluster, but changing the number of top PC's we cluster on should hopefully not change the clusters too much. Different combinations of the first N principle components and different values of K will be tested to see what factors are defining the clusters most prominantly. The greatest decrease in variance explained by far is after the 2nd principle component, and the next notable decrease is between the 5th and 6th principle. For these reasons, the first 5 principle components could have potential to be the most useful; therefore, various clustering combinations using the first 5 principle components will be compared. Given a constant number of clusters K, we should expect a reasonably similar pattern in the traits of each cluster still. 
+The first 5 principle components will be available to cluster, but changing the number of top PC's we cluster on should hopefully not change the general meaning of the clusters too much. Different combinations of the first N principle components and different values of K will be tested to see what factors are defining the clusters most prominantly. The greatest decrease in variance explained by far is after the 2nd principle component, and the next notable decrease is between the 5th and 6th principle. For these reasons, the first 5 principle components could have potential to be the most useful; therefore, various clustering combinations using the first 5 principle components will be compared. Given a constant number of clusters K, we should expect a reasonably similar pattern in the traits of each cluster still. 
 
 First the clustering will be done using only the 1st and 2nd principle components. The curve of the withing group sum of square error slightly suggests that the best number of clusters is 4, so that will be used. 
 ```{r}
 first2Pcs4Clusts = kMeansPipeline(data.frame(pcsSpotifyAndObjectives$x[,1:3]), 4)
 plot(pcsSpotifyAndObjectives$x[, c(2,3)], col=first2Pcs4Clusts$cluster, pch=16)
 ```
-Some small testing of atrist album distributions across the clusters. 
-```{r}
+
+```{r, include=FALSE}
 artistCount=artistClusterCount(first2Pcs4Clusts)
 johnMayerAppearances = artistCount %>%
   filter(Artist == "John Mayer")
@@ -290,11 +295,12 @@ avgMetricsinClusts(first2Pcs4Clusts, c("numGrammys", "presenceUncommonTS"))
 avgMetricsinClusts(first2Pcs4Clusts, c("numSongsOnAlb", "totalExplicit", "NumAlbums"))
 avgMetricsinClusts(first2Pcs4Clusts, c("avgLoudness", "rangeLoudness"))
 ```
-
+***THIS WILL NOT BE INCLUDED***
 Clust1: short, low acoustic, high energy, loud, high danceability, high tempo, and high valence. There are a high number on uncommon time signature songs. 
 Clust2: Low speechiness, and low explicit. Has more country 
 Clust3: High danceability, very high speechiness, very high propotion explicit, low tempo. There are many solo male artists. It is high in rap albums.
 Clust4: Long, high acousticness, high instrumentalness, low energy, low dancability, minor, quiet, slow, sad, and non-explicit 
+
 
 
 
@@ -314,6 +320,10 @@ numericDistributionEachClust(first2Pcs4Clusts, 'ReleaseYear')
 numericDistributionEachClust(first2Pcs4Clusts, 'YearsSinceFirst')
 ```
 
+***INCLUDED AGAIN***
+This first attempt at clustering seems to form visible groups with some defining characteristics like one cluster having high acousticness and low energy and dancability and another having high relative speechiness and propotion of explicit songs. The cluster with high speehiness and high proportion of explicit songs was also overwhelmingly represented by albums that had the primary genre of rap. This evidence may suggest that this first model would do a good job at seperately grouping rap albums and acoustic albums correctly. 
+
+
 Now the first 3 principle components will be what is clustered on. The within groups sum of squares plot now shows that if may be useful to use 5 clusters. We will try using both 4 and 5 clusters to compare. The first will use 4 clusters. 
 ```{r}
 first3Pcs4Clusts = kMeansPipeline(data.frame(pcsSpotifyAndObjectives$x[,1:4]), 4)
@@ -330,7 +340,8 @@ avgMetricsinClusts(first3Pcs4Clusts, c("numGrammys", "presenceUncommonTS"))
 avgMetricsinClusts(first3Pcs4Clusts, c("numSongsOnAlb", "totalExplicit", "NumAlbums"))
 avgMetricsinClusts(first3Pcs4Clusts, c("avgLoudness", "rangeLoudness"))
 ```
-It seems that the addition of the third PC helps define another cluster (here cluster 2) as long, instrumentally full, live albums. This is a good sign because PC 3 had a great opinion about liveness. 
+
+
 
 ```{r}
 stackedBarByClust(first3Pcs4Clusts, c("Gender"))
@@ -346,6 +357,11 @@ numericDistributionEachClust(first3Pcs4Clusts, 'ReleaseYear')
 
 numericDistributionEachClust(first3Pcs4Clusts, 'YearsSinceFirst')
 ```
+
+
+
+It seems that the addition of the third PC helps define another cluster (here cluster 2) as long, instrumental full, live albums. This is a good sign because PC 3 had a significant load for liveness. This is a good addition to the model because we are looking for features of clusters which are different from one another to see separation between them. 
+
 
 
 Now the same 3 principle components with 5 clusters. 
@@ -365,7 +381,8 @@ avgMetricsinClusts(first3Pcs5Clusts, c("numGrammys", "presenceUncommonTS"))
 avgMetricsinClusts(first3Pcs5Clusts, c("numSongsOnAlb", "totalExplicit", "NumAlbums"))
 avgMetricsinClusts(first3Pcs5Clusts, c("avgLoudness", "rangeLoudness"))
 ```
-The addition of a 5th cluster does not show predominant traits right away, and it can be that this "added cluster" is cluster 4, with all of its levels pretty close to 0. However, the genre distribution plot below shows there may be better separation of genres.
+
+
 
 ```{r}
 stackedBarByClust(first3Pcs5Clusts, c("Gender"))
@@ -381,9 +398,9 @@ numericDistributionEachClust(first3Pcs5Clusts, 'ReleaseYear')
 
 numericDistributionEachClust(first3Pcs5Clusts, 'YearsSinceFirst')
 ```
+The addition of a 5th cluster does not show predominant traits right away, and it can be that this "added cluster" is cluster 4, with all of its levels pretty close to 0. However, the genre distribution plot shows there may be better separation of genres.
 
-
-Now the first 5 principle components will be clustered on. First 4 clusters will be used. 
+Now the first 5 principle components will be clustered on. First only 4 clusters will be used. 
 ```{r}
 first5Pcs4Clusts = kMeansPipeline(data.frame(pcsSpotifyAndObjectives$x[,1:6]), 4)
 plot(pcsSpotifyAndObjectives$x[, c(2,3)], col=first5Pcs4Clusts$cluster, pch=16)
@@ -406,7 +423,8 @@ avgMetricsinClusts(first5Pcs4Clusts, c("numGrammys", "presenceUncommonTS"))
 avgMetricsinClusts(first5Pcs4Clusts, c("numSongsOnAlb", "totalExplicit", "NumAlbums"))
 avgMetricsinClusts(first5Pcs4Clusts, c("avgLoudness", "rangeLoudness"))
 ```
-Here it seems that the first 5 PC's give virtually the same results as the first 3. This is a good result for the sake of reliability of 4 clusters doing a good job at separating the data. 
+
+
 
 ```{r}
 stackedBarByClust(first5Pcs4Clusts, c("Gender"))
@@ -423,7 +441,7 @@ numericDistributionEachClust(first5Pcs4Clusts, 'ReleaseYear')
 numericDistributionEachClust(first5Pcs4Clusts, 'YearsSinceFirst')
 ```
 
-
+Here it seems that the first 5 PC's give virtually the same results as the first 3. This is a good result for the sake of reliability of 4 clusters doing a good job at separating the data. 
 
 
 
@@ -467,6 +485,10 @@ numericDistributionEachClust(first5Pcs5Clusts, 'ReleaseYear')
 numericDistributionEachClust(first5Pcs5Clusts, 'YearsSinceFirst')
 ```
 
+With the first 5 PC's included in making 5 clusters, the liveness cluster which was previously was created when we added the 3rd principle component gets split and allows the groups to be a bit more nuanced, as now there are 2 clusters which are high in liveness. We now see of these 2 that the cluster higher in liveness has a relatively low average acousticness, and the other had relatively low danceability and was relatively long in duration. (option)(An explanation for this could be that the one low in dancability is full of solos that may lessen the dancability of the songs) 
+
+
+
 Now with 6 clusters.
 ```{r}
 first5Pcs6Clusts = kMeansPipeline(data.frame(pcsSpotifyAndObjectives$x[,1:6]), 6)
@@ -505,8 +527,10 @@ numericDistributionEachClust(first5Pcs6Clusts, 'ReleaseYear')
 
 numericDistributionEachClust(first5Pcs6Clusts, 'YearsSinceFirst')
 ```
+It seems that when 6 clusters are initialized that there are 2 clusters with virtually the same characteristics being relatively high in danceability, speechiness, and explicitness. Both of these clusters were mostly solo male rap albums. This additional cluster does not accomplish much as it seems like it is separating albums which actually do have similar traits to one another. We cannot see the difference in the data by which this separation is being made, so it does not provide much information. 
 
-Now with 7. 
+
+Finally, with 7 clusters. 
 ```{r}
 first5Pcs7Clusts = kMeansPipeline(data.frame(pcsSpotifyAndObjectives$x[,1:6]), 7)
 plot(pcsSpotifyAndObjectives$x[, c(2,3)], col=first5Pcs7Clusts$cluster, pch=16)
@@ -545,7 +569,94 @@ numericDistributionEachClust(first5Pcs7Clusts, 'ReleaseYear')
 numericDistributionEachClust(first5Pcs7Clusts, 'YearsSinceFirst')
 ```
 
+This appears to give similar results to 6 clusters, where the rap cluster is split without much information as to why, and then that a new cluster without definitive features is added.
 
+
+With an extensive search through the different combinations the model which will be chosen to be further observed is the model using the first 5 principle components and 5 clusters. 
+
+## Section 3: Tests For Difference Between Clusters
+
+## Section 4: Specific Questions About Clusters
+We have determined the model that used the first 5 PC's to form 5 clusters was the best, so now we can try to speculate about the groups which were formed. 
+
+
+Refrence
+```{r}
+colnames(dfObjectiveOnly)
+colnames(dfAll)
+```
+
+```{r}
+avgMetricsinClusts(first5Pcs5Clusts,  c("avgDanceability", "avgEnergy", "avgAcousticness", "avgSpeechiness", "avgInstrumentalness", "proportionExplicit", "avgLiveness", "avgValence", "totalDurationSeconds", "avgTempo", "moreCommonMajMin", "proportionExplicit", "avgLoudness", "avgSpeechiness"))
+avgMetricsinClusts(first5Pcs5Clusts, c("avgEnergy", "avgAcousticness"))
+avgMetricsinClusts(first5Pcs5Clusts, c("avgSpeechiness", "proportionExplicit"))
+avgMetricsinClusts(first5Pcs5Clusts, c("numGrammys", "presenceUncommonTS"))
+avgMetricsinClusts(first5Pcs5Clusts, c("numSongsOnAlb", "totalExplicit", "NumAlbums"))
+avgMetricsinClusts(first5Pcs5Clusts, c("avgLoudness", "rangeLoudness"))
+```
+
+```{r}
+stackedBarByClust(first5Pcs5Clusts, c("Gender"))
+stackedBarByClust(first5Pcs5Clusts, c("Group.Solo"))
+stackedBarByClust(first5Pcs5Clusts, c("Genre1"))
+stackedBarByClust(first5Pcs5Clusts, c("Genre1", "Genre2"))
+
+stackedBarByClust(first5Pcs5Clusts, c("Gender", "Group.Solo"))
+#stackedBarByClust(first5Pcs5Clusts, c("Gender", "ReleaseYear"))
+#stackedBarByClust(first5Pcs5Clusts, c("Group.Solo", "ReleaseYear"))
+```
+
+
+```{r}
+numericDistributionEachClust(first5Pcs5Clusts, 'ReleaseYear')
+
+numericDistributionEachClust(first5Pcs5Clusts, 'YearsSinceFirst')
+```
+### Question 1: What are the rock albums in the 'rap cluster', and why are they there?
+With cluster 3 so strongly being represented by primarily rap albums and so lowly being represented by rock albums, it may be worth asking what rock albums are being put into this group if the clustering algorithm seems to be able to separate them so well? What about these rock albums is causing them to be put here?
+
+```{r}
+reattachData(first5Pcs5Clusts, dfObjectiveOnly) %>%
+  filter(cluster == 3 & Genre1 == "rock")
+```
+The answer to this is reasonably simple. The rock albums which are being put in cluster 3 are filled with narration tracks. Two rock albums were placed in cluster3 and one was just completely an interview and the other had a discussion track between each song. All of this music-less conversation strongly boosts the average speechiness of the album. This high speechiness score is expressed in the combination of PC loadings and ultimately encourages the albums to be clustered with other albums with high amounts of speeciness, and most of these are rap albums. 
+
+
+### Question 2: What is characteristic of the cluster with the highest proportion of female artists? What genres are being covered by these female artists in this cluster high in acousticness?
+Males dominated the billboard charts between 1999 and 2019, and each cluster's proportion of men far outweighed that of women. However, the cluster with the greatest proportion of female representation was cluster 4, our group with high acousticness and low engery. These descriptors could apply to various genere labels however, so some further investigation may be done to see which genres that females are playing in this "chill" cluster. The following graphic shows the distribution of primary genres of albums by female artists across the clusters. 
+
+
+
+
+```{r}
+reattachedData = reattachData(first5Pcs5Clusts, dfObjectiveOnly) %>%
+  filter(Gender == "F")
+countOfReattached = countInClusters(reattachedData, c("Genre1"))
+valProportionsReattached = countOfReattached %>%
+  group_by(cluster) %>%
+  mutate(proportion = countInClusts/sum(countInClusts))
+  
+ggplot(valProportionsReattached, aes(x = cluster, y =proportion, fill = Group), na.rm =TRUE) +
+  geom_bar(position = "fill",stat = 'identity', na.rm = TRUE) +
+  labs(x = "Cluster", y = "Proportion", title = paste("Distribution of ",  "Primary Album Genre" ," In Each Cluster for Female Artists", sep = ""))
+
+
+
+reattachedData = reattachData(first5Pcs5Clusts, dfObjectiveOnly) %>%
+  filter(Gender == "F")
+countOfReattached = countInClusters(reattachedData, c("Genre1", "Genre2"))
+valProportionsReattached = countOfReattached %>%
+  group_by(cluster) %>%
+  mutate(proportion = countInClusts/sum(countInClusts))
+  
+ggplot(valProportionsReattached, aes(x = cluster, y =proportion, fill = Group), na.rm =TRUE) +
+  geom_bar(position = "fill",stat = 'identity', na.rm = TRUE) +
+  labs(x = "Cluster", y = "Proportion", title = paste("Distribution of ",  "Primary Album Genre" ," In Each Cluster for Female Artists", sep = ""))
+
+```
+It seems that in the cluster made up of the greatest proportion of female artists that pop was the most prevalent genre. 
+
+### Question 3: What are the genres being covered by all of these male groups in the cluster with the far greater group density?
 
 
 
