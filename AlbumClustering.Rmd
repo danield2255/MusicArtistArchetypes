@@ -199,7 +199,6 @@ countInClusters = function(df, cols){
     group_by(cluster, !!!syms(cols))%>%
     summarise(countInClusts = n()) %>%
     unite(Group, cols)
-  print(counts)
   return(counts)
 }
 
@@ -239,8 +238,6 @@ numericDistributionEachClust2 = function(df, val){
     labs(title = paste('Distribution of Album ', val, " Across Clusters")) +
     theme(legend.position="none")
 }
-
-
 
 ```
 
@@ -576,6 +573,30 @@ With an extensive search through the different combinations the model which will
 
 ## Section 3: Tests For Difference Between Clusters
 
+For testing categorical differences we will use chi-squared tests for independence. 
+```{r}
+#Do this for all/more?
+dfReattached = reattachData(first5Pcs5Clusts, dfObjectiveOnly)
+print(colnames(dfReattachedSpotify))
+chisq.test(dfReattached$cluster, dfReattached$Gender)
+chisq.test(dfReattached$cluster, dfReattached$Group.Solo)
+chisq.test(dfReattached$cluster, dfReattached$Genre1)
+```
+Use analysis of variance (ANOVA) to test numerical difference of means between multiple groups, which are the clusters. 
+```{r}
+#Tuckey's Pairwise??
+#Do this for all/more?
+dfReattachedSpotify = reattachData(first5Pcs5Clusts, dfAll)
+summary(aov(numGrammys ~ cluster, data = dfReattached))
+summary(aov(ReleaseYear ~ cluster, data = dfReattached))
+summary(aov(totalDurationSeconds ~ cluster, data = dfReattachedSpotify))
+summary(aov(avgTempo ~ cluster, data = dfReattachedSpotify))
+
+```
+
+
+
+
 ## Section 4: Specific Questions About Clusters
 We have determined the model that used the first 5 PC's to form 5 clusters was the best, so now we can try to speculate about the groups which were formed. 
 
@@ -629,9 +650,9 @@ Males dominated the billboard charts between 1999 and 2019, and each cluster's p
 
 
 ```{r}
-reattachedData = reattachData(first5Pcs5Clusts, dfObjectiveOnly) %>%
+reattachedDataF = reattachData(first5Pcs5Clusts, dfObjectiveOnly) %>%
   filter(Gender == "F")
-countOfReattached = countInClusters(reattachedData, c("Genre1"))
+countOfReattached = countInClusters(reattachedDataF, c("Genre1"))
 valProportionsReattached = countOfReattached %>%
   group_by(cluster) %>%
   mutate(proportion = countInClusts/sum(countInClusts))
@@ -642,9 +663,9 @@ ggplot(valProportionsReattached, aes(x = cluster, y =proportion, fill = Group), 
 
 
 
-reattachedData = reattachData(first5Pcs5Clusts, dfObjectiveOnly) %>%
+reattachedDataF = reattachData(first5Pcs5Clusts, dfObjectiveOnly) %>%
   filter(Gender == "F")
-countOfReattached = countInClusters(reattachedData, c("Genre1", "Genre2"))
+countOfReattached = countInClusters(reattachedDataF, c("Genre1", "Genre2"))
 valProportionsReattached = countOfReattached %>%
   group_by(cluster) %>%
   mutate(proportion = countInClusts/sum(countInClusts))
@@ -654,9 +675,36 @@ ggplot(valProportionsReattached, aes(x = cluster, y =proportion, fill = Group), 
   labs(x = "Cluster", y = "Proportion", title = paste("Distribution of ",  "Primary Album Genre" ," In Each Cluster for Female Artists", sep = ""))
 
 ```
-It seems that in the cluster made up of the greatest proportion of female artists that pop was the most prevalent genre. 
+It seems that in the cluster made up of the greatest proportion of female artists that pop was the most prevalent genre, but this is true for all the female populations each cluster. 
+
+```{r}
+artistClusterCount(reattachedDataF)  %>%
+  filter(cluster == 4) %>%
+  arrange(desc(countInClusts))
+```
+It seems that the female artists with the most representation in this cluster all play different genres of softer music, and this makes sense because they are in the cluster high in acousticness.
+
+
+
 
 ### Question 3: What are the genres being covered by all of these male groups in the cluster with the far greater group density?
+
+Here, cluster 2 will be focused on because it has the greatest proportion of groups, mostly represented by male groups.
+```{r}
+reattachedDataClust2 = reattachData(first5Pcs5Clusts, dfObjectiveOnly) %>%
+  filter(cluster == 2, Group.Solo == "Group")
+countInClusters(reattachedDataClust2, c("Genre1")) %>%
+  arrange(desc(countInClusts))
+
+```
+
+The primary genre of albums by groups in this cluster is rock, followed not too far behind by pop.
+
+
+
+
+
+
 
 
 
