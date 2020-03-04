@@ -267,12 +267,13 @@ avgMetricsinClusts = function(dfInput, vals){
 The first 5 principle components will be available to cluster, but changing the number of top PC's we cluster on should hopefully not change the general meaning of the clusters too much. Different combinations of the first N principle components and different values of K will be tested to see what factors are defining the clusters most prominantly. The greatest decrease in variance explained by far is after the 2nd principle component, and the next notable decrease is between the 5th and 6th principle. For these reasons, the first 5 principle components could have potential to be the most useful; therefore, various clustering combinations using the first 5 principle components will be compared. Given a constant number of clusters K, we should expect a reasonably similar pattern in the traits of each cluster still. 
 
 First the clustering will be done using only the 1st and 2nd principle components. The curve of the withing group sum of square error slightly suggests that the best number of clusters is 4, so that will be used. 
-```{r}
+```{r, include=FALSE}
 first2Pcs4Clusts = kMeansPipeline(data.frame(pcsSpotifyAndObjectives$x[,1:3]), 4)
 plot(pcsSpotifyAndObjectives$x[, c(2,3)], col=first2Pcs4Clusts$cluster, pch=16)
 ```
 
 ```{r, include=FALSE}
+## just some artist presence counters
 artistCount=artistClusterCount(first2Pcs4Clusts)
 johnMayerAppearances = artistCount %>%
   filter(Artist == "John Mayer")
@@ -571,7 +572,7 @@ This appears to give similar results to 6 clusters, where the rap cluster is spl
 
 With an extensive search through the different combinations the model which will be chosen to be further observed is the model using the first 5 principle components and 5 clusters. 
 
-## Section 3: Tests For Difference Between Clusters
+## Tests For Difference Between Clusters --> Put in appropriate place with sec 3
 
 For testing categorical differences we will use chi-squared tests for independence. 
 ```{r}
@@ -597,7 +598,7 @@ summary(aov(avgTempo ~ cluster, data = dfReattachedSpotify))
 
 
 
-## Section 4: Specific Questions About Clusters
+## Section 3: Specific Questions About Clusters
 We have determined the model that used the first 5 PC's to form 5 clusters was the best, so now we can try to speculate about the groups which were formed. 
 
 
@@ -701,6 +702,8 @@ countInClusters(reattachedDataClust2, c("Genre1")) %>%
 The primary genre of albums by groups in this cluster is rock, followed not too far behind by pop.
 
 
+
+## Apendix
 
 
 
