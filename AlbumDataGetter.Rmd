@@ -14,6 +14,7 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 
 source("frostFunctions.R")
+source("ClusteringPrepFunctions.R")
 ```
 
 
@@ -23,8 +24,9 @@ riaaDf = read.csv("Data/RIAACertifications.csv")
 grammyDf = read.csv("Data/grammyWinners.csv")
 artistDf = read.csv("Data/ArtistInfo.csv")
 billboardDf = read.csv("Data/billboardRankings.csv")
-albumDatesGenres = read.csv("Data/albReleaseDatesGenres.csv")
+albumDates = read.csv("Data/albReleaseDates.csv")
 ```
+
 
 
 
@@ -74,9 +76,11 @@ riaaDf["Artist"] = lapply(riaaDf["Artist"], artistPunctuationStrip)
 riaaDf[c("Album","Artist","Label")]=lapply(riaaDf[c("Album","Artist","Label")],stringColStandardizer)
 riaaDf[c("Album")]=lapply(riaaDf[c("Album")],riaaSuffixStrip)
 
-albumDates["ReleaseDate"] = lapply(albumDates["ReleaseDate"], as.Date)
 
+
+albumDates["ReleaseDate"] = lapply(albumDates["ReleaseDate"], as.Date)
 ```
+
 
 
 
@@ -129,9 +133,7 @@ accoladesDf = merge(riaaDf , grammyDf, by = c("Artist", "Album"), x.all = TRUE) 
   distinct()
 
 ```
-```{r}
-accoladesDf
-```
+
 
 
 ```{r}
@@ -170,7 +172,6 @@ attrsOfAlbs = songAttrsDf %>%
   merge(yearlyPopularGenre, by.x = "ReleaseYear", by.y = "Year") %>% 
   merge(artistDf %>% select(-X), by = "Artist") 
 
-attrsOfAlbs %>% filter(Artist == "Eminem")
 ```
 
 
@@ -213,5 +214,3 @@ write_csv(attrsOfAlbsFinal, "Data/attrsOfAlbsFinal.csv")
 write_csv(artistDf, "Data/artistDf.csv")
 ```
 
-- PCA 
-- KMeans
