@@ -578,8 +578,12 @@ For testing categorical differences we will use chi-squared tests for independen
 ```{r}
 #Do this for all/more?
 dfReattached = reattachData(first5Pcs5Clusts, dfObjectiveOnly)
-print(colnames(dfReattachedSpotify))
+print(colnames(dfReattached))
 chisq.test(dfReattached$cluster, dfReattached$Gender)
+
+dfReattached %>%
+  count(cluster, Gender)
+
 chisq.test(dfReattached$cluster, dfReattached$Group.Solo)
 chisq.test(dfReattached$cluster, dfReattached$Genre1)
 ```
@@ -589,9 +593,11 @@ Use analysis of variance (ANOVA) to test numerical difference of means between m
 #Do this for all/more?
 dfReattachedSpotify = reattachData(first5Pcs5Clusts, dfAll)
 summary(aov(numGrammys ~ cluster, data = dfReattached))
+TukeyHSD(aov(numGrammys ~ cluster, data = dfReattached))
 summary(aov(ReleaseYear ~ cluster, data = dfReattached))
-summary(aov(totalDurationSeconds ~ cluster, data = dfReattachedSpotify))
-summary(aov(avgTempo ~ cluster, data = dfReattachedSpotify))
+TukeyHSD(aov(ReleaseYear ~ cluster, data = dfReattached))
+#summary(aov(totalDurationSeconds ~ cluster, data = dfReattachedSpotify))
+#summary(aov(avgTempo ~ cluster, data = dfReattachedSpotify))
 
 ```
 
