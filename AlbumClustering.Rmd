@@ -19,6 +19,9 @@ library(mltools)
 library(rlang)
 library(reshape2)
 library(stringi)
+library(flipPlots)
+library(kableExtra)
+library(formattable)
 set.seed(41)
 ```
 
@@ -239,7 +242,30 @@ numericDistributionEachClust2 = function(df, val){
     theme(legend.position="none")
 }
 
+coloredTableDisplay = function(df){
+  reattachedProcessed = reattachData(df, dfAll) %>%
+    select(c("cluster","avgDanceability", "avgEnergy", "avgAcousticness", "avgSpeechiness", "avgInstrumentalness", "proportionExplicit", "avgLiveness", "avgValence", "totalDurationSeconds", "avgTempo", "moreCommonMajMin", "proportionExplicit", "avgLoudness", "avgSpeechiness")) %>%
+    mutate_at(vars(c("avgDanceability", "avgEnergy", "avgAcousticness", "avgSpeechiness", "avgInstrumentalness", "proportionExplicit", "avgLiveness", "avgValence", "totalDurationSeconds", "avgTempo", "moreCommonMajMin", "proportionExplicit", "avgLoudness", "avgSpeechiness")), funs(scale)) %>%
+    group_by(cluster) %>%
+    summarise_all(mean) %>%
+    #group_by(cluster) %>%
+    mutate_at(-1, funs(round(., 3))) %>%
+    mutate_at(.vars=vars(-cluster), .funs=funs(ifelse(.<=0, color_tile("maroon", "transparent")(.*c(.<=0)), 
+                                    color_tile("transparent", "light green")(.*c(.>=0)))))
+    #mutate(avgDanceability = cell_spec(
+    #avgDanceability, color = "white", bold = T,
+    #background = spec_color(1:4, end = 0.9, option = "A", direction = -1)))
+  
+  kTable = kable(reattachedProcessed, escape = F, align = "c") %>%
+  kable_styling(bootstrap_options = "striped", full_width = F, position = "center")
+  
+  return(kTable)
+}
+  
+
 ```
+
+
 
 
 ```{r}
@@ -283,6 +309,10 @@ maroon5Appearances = artistCount %>%
 print(maroon5Appearances)
 ```
 
+```{r}
+coloredTableDisplay(first2Pcs4Clusts)
+
+```
 
 ```{r}
 avgMetricsinClusts(first2Pcs4Clusts,  c("avgDanceability", "avgEnergy", "avgAcousticness", "avgSpeechiness", "avgInstrumentalness", "proportionExplicit", "avgLiveness", "avgValence", "totalDurationSeconds", "avgTempo", "moreCommonMajMin", "proportionExplicit", "avgLoudness", "avgSpeechiness"))
@@ -371,6 +401,11 @@ Finally, with 7 clusters.
 first5Pcs7Clusts = kMeansPipeline(data.frame(pcsSpotifyAndObjectives$x[,1:6]), 7)
 ```
 
+
+
+
+
+
 ```{r}
 avgMetricsinClusts(first5Pcs7Clusts,  c("avgDanceability", "avgEnergy", "avgAcousticness", "avgSpeechiness", "avgInstrumentalness", "proportionExplicit", "avgLiveness", "avgValence", "totalDurationSeconds", "avgTempo", "moreCommonMajMin", "proportionExplicit", "avgLoudness", "avgSpeechiness"))
 ```
@@ -385,7 +420,8 @@ With an extensive search through the different combinations the model which will
 
 
 ```{r}
-dfReattached = reattachData(first5Pcs5Clusts, dfObjectiveOnly)
+#Now that the combination of PC's and clusters we want to analyze has been chosen, rejoin all data
+dfReattached = reattachData(reattachData(first5Pcs5Clusts, dfObjectiveOnly), dfAll)
 ```
 
 
@@ -409,26 +445,16 @@ TukeyHSD(aov(ReleaseYear ~ cluster, data = dfReattached))
 We have determined the model that used the first 5 PC's to form 5 clusters was the best, so now we can try to speculate about the groups which were formed. The following visualizations show what the properties are of albums making up each cluster. 
 
 ```{r}
-library(flipPlots)
-my.data = data.frame(Married = c("Yes","Yes", "Yes", "No", "No"),
-    Pet = c("Yes", "Yes", "No", "Yes", "No"),
-    Happy = c("Yes", "Yes", "Yes", "Yes", "No"),
-    freq = 5:1)
-SankeyDiagram(my.data[, -4],
-              link.color = "Source", 
-              weights = my.data$freq) 
+#head(dfReattached)
+customGreen0 = "#DeF7E9"
+
+customGreen = "#71CA97"
+dfReattachedView = dfReattached %>%
+  group_by(cluster) %>%
+  summarise(avgAcousticness = mean(avgAcousticness))
+formattable(as.data.frame(dfReattachedView),  list(`cluster` = formatter(
+              "span", style = ~ style(color = "grey",font.weight = "bold"), `avgAcousticness`= color_tile(customGreen, customGreen0))) )
 ```
-
-USE THESE TO ANSWER QUESTIONS
-
-
-```{r}
-
-library(ztable)
-tests = table(dfReattached$cluster, dfReattached$numGrammys)
-tests%>% makeHeatmap() 
-```
-
 
 
 
@@ -494,9 +520,25 @@ ggplot(valProportionsReattached, aes(x = cluster, y =proportion, fill = Group), 
   geom_bar(position = "fill",stat = 'identity', na.rm = TRUE) +
   labs(x = "Cluster", y = "Proportion", title = paste("Distribution of ",  "Primary Album Genre" ," In Each Cluster for Female Artists", sep = ""))
 
+head(reattachedDataF)
 
 ```
 It seems that in the cluster made up of the greatest proportion of female artists that pop was the most prevalent genre, but this is true for all the female populations each cluster. 
+
+
+
+```{r}
+## every column put into sankey diagram is a layer
+femaleGenres = reattachedDataF %>%
+  select(Genre1, Genre2, Genre3) %>%
+  group_by(Genre1, Genre2, Genre3) %>%
+  summarise(count = n())
+print(femaleGenres)
+SankeyDiagram(femaleGenres[, c(-3, -4)],
+              link.color = "Source", 
+              weights = femaleGenres$count) 
+```
+
 
 Observing count of albums of each female artist who was in cluster 4 may help provide some insight as well. 
 
