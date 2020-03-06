@@ -161,13 +161,13 @@ Now that the data has gone through PCA and we have chosen the optimal number of 
 
 
 ```{r, include=FALSE}
-kMeansPipeline = function(df, numClusts){
+kMeansPipeline = function(df, numClusts, pcs){
   dataSub = as.data.frame(df)
   dataSub = dataSub[,-1]
   wss <- (nrow(dataSub)-1)*sum(apply(dataSub,2,var))
   for (i in 2:50) wss[i] <- sum(kmeans(dataSub,centers=i)$withinss)
   plot(1:50, wss, type="b", xlab="Number of Clusters",
-       ylab="Within groups sum of squares")
+       ylab="Within groups sum of squares", main = paste("Within Group Sum Of Squares vs Number of Clusters for first ", as.character(pcs), " PC's"))
   
   k <- kmeans(dataSub, numClusts,iter.max=1000)
   clustDf = as.data.frame(df)
@@ -248,8 +248,8 @@ numericDistributionEachClust2 = function(df, val){
 
 coloredTableDisplay = function(df){
   reattachedProcessed = reattachData(df, dfAll) %>%
-    select(c("cluster","avgDanceability", "avgEnergy", "avgAcousticness", "avgSpeechiness", "avgInstrumentalness", "proportionExplicit", "avgLiveness", "avgValence", "totalDurationSeconds", "avgTempo", "moreCommonMajMin", "proportionExplicit", "avgLoudness", "avgSpeechiness")) %>%
-    mutate_at(vars(c("avgDanceability", "avgEnergy", "avgAcousticness", "avgSpeechiness", "avgInstrumentalness", "proportionExplicit", "avgLiveness", "avgValence", "totalDurationSeconds", "avgTempo", "moreCommonMajMin", "proportionExplicit", "avgLoudness", "avgSpeechiness")), funs(scale)) %>%
+    select(c("cluster","Danceability" = "avgDanceability","Energy" = "avgEnergy","Acousticness"= "avgAcousticness","Speechiness" = "avgSpeechiness","Instruemntalness" = "avgInstrumentalness","Explicit" = "proportionExplicit","Liveness" = "avgLiveness","Valence" = "avgValence","Duration" = "totalDurationSeconds","Tempo" = "avgTempo", "MajorMinor" = "moreCommonMajMin", "Loudness" =  "avgLoudness")) %>%
+    mutate_at(vars(c("Danceability", "Energy", "Acousticness", "Speechiness", "Instruemntalness", "Explicit", "Liveness", "Valence", "Duration", "Tempo", "MajorMinor", "Loudness")), funs(scale)) %>%
     group_by(cluster) %>%
     summarise_all(mean) %>%
     mutate_at(-1, funs(round(., 3)))
@@ -260,7 +260,7 @@ coloredTableDisplay = function(df){
   `cluster` = formatter("span", style = ~ style(color = "grey",font.weight = "bold","border-radius" = "0px")), 
                      area(col = -1) ~ function(x) percent(x / 100, digits = 0),
                      area(col = -1) ~ function(x)ifelse(x<=0, color_tile("red", "transparent")(x*c(x<=0)), 
-                                    color_tile("transparent", "forest green")(x*c(x>=0))))) 
+                                    color_tile("transparent", "forest green")(x*c(x>=0)))))  
   
 
   return(kTable)
@@ -301,7 +301,7 @@ The first 5 principle components will be available to cluster, but changing the 
 
 First the clustering will be done using only the 1st and 2nd principle components. The curve of the withing group sum of square error slightly suggests that the best number of clusters is 4, so that will be used. 
 ```{r}
-first2Pcs4Clusts = kMeansPipeline(data.frame(pcsSpotifyAndObjectives$x[,1:3]), 4)
+first2Pcs4Clusts = kMeansPipeline(data.frame(pcsSpotifyAndObjectives$x[,1:3]), 4, 2)
 ```
 
 ```{r, include=FALSE}
@@ -316,13 +316,14 @@ maroon5Appearances = artistCount %>%
 print(maroon5Appearances)
 ```
 
+\n 
+<center>
 
+**Average Standardized Album Metric Scores 2 PC's in 4 Clusters** 
 
+</center>
 ```{r}
-avgMetricsinClusts(first2Pcs4Clusts,  c("avgDanceability", "avgEnergy", "avgAcousticness", "avgSpeechiness", "avgInstrumentalness", "proportionExplicit", "avgLiveness", "avgValence", "totalDurationSeconds", "avgTempo", "moreCommonMajMin", "proportionExplicit", "avgLoudness", "avgSpeechiness"))
 coloredTableDisplay(first2Pcs4Clusts)
-
-
 ```
 
 This first attempt at clustering seems to form visible groups with some defining characteristics such as one cluster having high acousticness and low energy and dancability and another having high relative speechiness and propotion of explicit songs. The cluster with high speehiness and high proportion of explicit songs was also overwhelmingly represented by albums that had the primary genre of rap. This evidence may suggest that this first model would do a good job at seperately grouping rap albums and acoustic albums correctly. 
@@ -330,12 +331,21 @@ This first attempt at clustering seems to form visible groups with some defining
 
 Now the first 3 principle components will be what is clustered on. The within groups sum of squares plot now shows that if may be useful to use 5 clusters. We will try using both 4 and 5 clusters to compare. The first will use 4 clusters. 
 ```{r}
-first3Pcs4Clusts = kMeansPipeline(data.frame(pcsSpotifyAndObjectives$x[,1:4]), 4)
+first3Pcs4Clusts = kMeansPipeline(data.frame(pcsSpotifyAndObjectives$x[,1:4]), 4, 3)
 ```
 
+
+\n 
+<center>
+
+**Average Standardized Album Metric Scores 3 PC's in 4 Clusters** 
+
+</center>
 ```{r}
-avgMetricsinClusts(first3Pcs4Clusts,  c("avgDanceability", "avgEnergy", "avgAcousticness", "avgSpeechiness", "avgInstrumentalness", "proportionExplicit", "avgLiveness", "avgValence", "totalDurationSeconds", "avgTempo", "moreCommonMajMin", "proportionExplicit", "avgLoudness", "avgSpeechiness"))
+coloredTableDisplay(first3Pcs4Clusts)
 ```
+
+
 
 
 
@@ -345,12 +355,19 @@ It seems that the addition of the third PC helps define another cluster (here cl
 
 Now the same 3 principle components with 5 clusters. 
 ```{r, include=FALSE}
-first3Pcs5Clusts = kMeansPipeline(data.frame(pcsSpotifyAndObjectives$x[,1:4]), 5)
+first3Pcs5Clusts = kMeansPipeline(data.frame(pcsSpotifyAndObjectives$x[,1:4]), 5, 3)
 ```
 
 
+
+\n 
+<center>
+
+**Average Standardized Album Metric Scores 3 PC's in 5 Clusters** 
+
+</center>
 ```{r}
-avgMetricsinClusts(first3Pcs5Clusts,  c("avgDanceability", "avgEnergy", "avgAcousticness", "avgSpeechiness", "avgInstrumentalness", "proportionExplicit", "avgLiveness", "avgValence", "totalDurationSeconds", "avgTempo", "moreCommonMajMin", "proportionExplicit", "avgLoudness", "avgSpeechiness"))
+coloredTableDisplay(first3Pcs5Clusts)
 ```
 
 
@@ -359,11 +376,18 @@ The addition of a 5th cluster does not show predominant traits right away, and i
 
 Now the first 5 principle components will be clustered on. First only 4 clusters will be used. The number of clusters will be increased until 7 since the within group sum of squares plot seems to decrease steepest until the 7th cluster. 
 ```{r}
-first5Pcs4Clusts = kMeansPipeline(data.frame(pcsSpotifyAndObjectives$x[,1:6]), 4)
+first5Pcs4Clusts = kMeansPipeline(data.frame(pcsSpotifyAndObjectives$x[,1:6]), 4, 5)
 ```
 
+
+\n 
+<center>
+
+**Average Standardized Album Metric Scores 5 PC's in 4 Clusters** 
+
+</center>
 ```{r}
-avgMetricsinClusts(first5Pcs4Clusts,  c("avgDanceability", "avgEnergy", "avgAcousticness", "avgSpeechiness", "avgInstrumentalness", "proportionExplicit", "avgLiveness", "avgValence", "totalDurationSeconds", "avgTempo", "moreCommonMajMin", "proportionExplicit", "avgLoudness", "avgSpeechiness"))
+coloredTableDisplay(first5Pcs4Clusts)
 ```
 
 
@@ -375,11 +399,18 @@ Here it seems that the first 5 PC's give virtually the same results as the first
 
 Next will be 5 clusters.
 ```{r, include=FALSE}
-first5Pcs5Clusts = kMeansPipeline(data.frame(pcsSpotifyAndObjectives$x[,1:6]), 5)
+first5Pcs5Clusts = kMeansPipeline(data.frame(pcsSpotifyAndObjectives$x[,1:6]), 5, 5)
 ```
 
+
+\n 
+<center>
+
+**Average Standardized Album Metric Scores 5 PC's in 5 Clusters** 
+
+</center>
 ```{r}
-avgMetricsinClusts(first5Pcs5Clusts,  c("avgDanceability", "avgEnergy", "avgAcousticness", "avgSpeechiness", "avgInstrumentalness", "proportionExplicit", "avgLiveness", "avgValence", "totalDurationSeconds", "avgTempo", "moreCommonMajMin", "proportionExplicit", "avgLoudness", "avgSpeechiness"))
+coloredTableDisplay(first5Pcs5Clusts)
 ```
 
 
@@ -391,11 +422,18 @@ With the first 5 PC's included in making 5 clusters, the liveness cluster which 
 
 Now with 6 clusters.
 ```{r, include=FALSE}
-first5Pcs6Clusts = kMeansPipeline(data.frame(pcsSpotifyAndObjectives$x[,1:6]), 6)
+first5Pcs6Clusts = kMeansPipeline(data.frame(pcsSpotifyAndObjectives$x[,1:6]), 6, 5)
 ```
 
+
+\n 
+<center>
+
+**Average Standardized Album Metric Scores 5 PC's in 6 Clusters** 
+
+</center>
 ```{r}
-avgMetricsinClusts(first5Pcs6Clusts,  c("avgDanceability", "avgEnergy", "avgAcousticness", "avgSpeechiness", "avgInstrumentalness", "proportionExplicit", "avgLiveness", "avgValence", "totalDurationSeconds", "avgTempo", "moreCommonMajMin", "proportionExplicit", "avgLoudness", "avgSpeechiness"))
+coloredTableDisplay(first5Pcs6Clusts)
 ```
 
 
@@ -405,16 +443,20 @@ It seems that when 6 clusters are initialized that there are 2 clusters with vir
 
 Finally, with 7 clusters. 
 ```{r, include=FALSE}
-first5Pcs7Clusts = kMeansPipeline(data.frame(pcsSpotifyAndObjectives$x[,1:6]), 7)
+first5Pcs7Clusts = kMeansPipeline(data.frame(pcsSpotifyAndObjectives$x[,1:6]), 7, 5)
 ```
 
 
 
 
+\n 
+<center>
 
+**Average Standardized Album Metric Scores 5 PC's in 7 Clusters** 
 
+</center>
 ```{r}
-avgMetricsinClusts(first5Pcs7Clusts,  c("avgDanceability", "avgEnergy", "avgAcousticness", "avgSpeechiness", "avgInstrumentalness", "proportionExplicit", "avgLiveness", "avgValence", "totalDurationSeconds", "avgTempo", "moreCommonMajMin", "proportionExplicit", "avgLoudness", "avgSpeechiness"))
+coloredTableDisplay(first5Pcs7Clusts)
 ```
 
 
@@ -569,6 +611,17 @@ countInClusters(reattachedDataClust2, c("Genre1")) %>%
 ```
 
 The primary genre of albums by groups in this cluster is rock, followed not too far behind by pop.
+
+### Question 4: Are there any demographic details which help understand the differences between the 2 clusters with high scores for liveness?
+
+### Question 5: Are there differences the distribution of grammy awards accross clusters?
+```{r}
+dfGrammyAlbs = dfReattached %>%
+  filter(numGrammys >0)
+
+ggplot(dfGrammyAlbs, aes(x = cluster, y = numGrammys)) +geom_bar(stat = "identity")
+```
+
 
 ## Takeaways 
 This investigation of grouping albums by purely musical characteristics 
