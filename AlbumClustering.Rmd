@@ -24,7 +24,11 @@ library(kableExtra)
 library(formattable)
 set.seed(41)
 ```
-
+<style>
+  thead {
+     font-size: 9.5px;
+  }
+</style>
 
 ## Intro
 Computational grouping through clustering could provide an interesting perspective to us about what music is similar and dissimilar. Human understanding of artistic likeness in music is often confined to labels such as genre, but how do we arrive at genre definition? The landscape of musical art is so vast and constantly evolving that it can be difficult to effectively compare and contrast large groups of content. There are so many variables which make up music that it would be hard for a human to consider them all effectively and appropriately. Clustering algorithms provide a reduced bias alternative method of grouping content, where the input considerations can be controlled. This is extremely useful because if what is important is considering the comparison of the music itself, then controlling the input to only be the artistic musical elements will limits the algorithm's view and base its groups only on these artistic elements. The limiting of input will ensure that the algorithm is not affected by the outside influencing factors that humans use as part of their method of grouping content. After groups are created, we can investigate what factors caused them to end up the way the did, and we can reconsider the data that we hid from the algorithm before the data was clustered. 
@@ -248,22 +252,25 @@ coloredTableDisplay = function(df){
     mutate_at(vars(c("avgDanceability", "avgEnergy", "avgAcousticness", "avgSpeechiness", "avgInstrumentalness", "proportionExplicit", "avgLiveness", "avgValence", "totalDurationSeconds", "avgTempo", "moreCommonMajMin", "proportionExplicit", "avgLoudness", "avgSpeechiness")), funs(scale)) %>%
     group_by(cluster) %>%
     summarise_all(mean) %>%
-    #group_by(cluster) %>%
-    mutate_at(-1, funs(round(., 3))) %>%
-    mutate_at(.vars=vars(-cluster), .funs=funs(ifelse(.<=0, color_tile("maroon", "transparent")(.*c(.<=0)), 
-                                    color_tile("transparent", "light green")(.*c(.>=0)))))
-    #mutate(avgDanceability = cell_spec(
-    #avgDanceability, color = "white", bold = T,
-    #background = spec_color(1:4, end = 0.9, option = "A", direction = -1)))
+    mutate_at(-1, funs(round(., 3)))
+
   
-  kTable = kable(reattachedProcessed, escape = F, align = "c") %>%
-  kable_styling(bootstrap_options = "striped", full_width = F, position = "center")
   
+  kTable = formattable(reattachedProcessed, align = "l", list(formatter("span", style = style("font-size:5px;")),
+  `cluster` = formatter("span", style = ~ style(color = "grey",font.weight = "bold","border-radius" = "0px")), 
+                     area(col = -1) ~ function(x) percent(x / 100, digits = 0),
+                     area(col = -1) ~ function(x)ifelse(x<=0, color_tile("red", "transparent")(x*c(x<=0)), 
+                                    color_tile("transparent", "forest green")(x*c(x>=0))))) 
+  
+
   return(kTable)
 }
   
 
 ```
+
+
+
 
 
 
@@ -309,13 +316,13 @@ maroon5Appearances = artistCount %>%
 print(maroon5Appearances)
 ```
 
-```{r}
-coloredTableDisplay(first2Pcs4Clusts)
 
-```
 
 ```{r}
 avgMetricsinClusts(first2Pcs4Clusts,  c("avgDanceability", "avgEnergy", "avgAcousticness", "avgSpeechiness", "avgInstrumentalness", "proportionExplicit", "avgLiveness", "avgValence", "totalDurationSeconds", "avgTempo", "moreCommonMajMin", "proportionExplicit", "avgLoudness", "avgSpeechiness"))
+coloredTableDisplay(first2Pcs4Clusts)
+
+
 ```
 
 This first attempt at clustering seems to form visible groups with some defining characteristics such as one cluster having high acousticness and low energy and dancability and another having high relative speechiness and propotion of explicit songs. The cluster with high speehiness and high proportion of explicit songs was also overwhelmingly represented by albums that had the primary genre of rap. This evidence may suggest that this first model would do a good job at seperately grouping rap albums and acoustic albums correctly. 
@@ -443,18 +450,6 @@ TukeyHSD(aov(ReleaseYear ~ cluster, data = dfReattached))
 
 ## Section 3: Specific Questions About Clusters
 We have determined the model that used the first 5 PC's to form 5 clusters was the best, so now we can try to speculate about the groups which were formed. The following visualizations show what the properties are of albums making up each cluster. 
-
-```{r}
-#head(dfReattached)
-customGreen0 = "#DeF7E9"
-
-customGreen = "#71CA97"
-dfReattachedView = dfReattached %>%
-  group_by(cluster) %>%
-  summarise(avgAcousticness = mean(avgAcousticness))
-formattable(as.data.frame(dfReattachedView),  list(`cluster` = formatter(
-              "span", style = ~ style(color = "grey",font.weight = "bold"), `avgAcousticness`= color_tile(customGreen, customGreen0))) )
-```
 
 
 
