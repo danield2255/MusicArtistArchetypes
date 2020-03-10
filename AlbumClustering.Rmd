@@ -31,12 +31,12 @@ set.seed(41)
 </style>
 
 ## Intro
-Computational grouping through clustering could provide an interesting perspective to us about what music is similar and dissimilar. Human understanding of artistic likeness in music is often confined to labels such as genre, but how do we arrive at genre definition? The landscape of musical art is so vast and constantly evolving that it can be difficult to effectively compare and contrast large groups of content. There are so many variables which make up music that it would be hard for a human to consider them all effectively and appropriately. Clustering algorithms provide a reduced bias alternative method of grouping content, where the input considerations can be controlled. This is extremely useful because if what is important is considering the comparison of the music itself, then controlling the input to only be the artistic musical elements will limits the algorithm's view and base its groups only on these artistic elements. The limiting of input will ensure that the algorithm is not affected by the outside influencing factors that humans use as part of their method of grouping content. After groups are created, we can investigate what factors caused them to end up the way the did, and we can reconsider the data that we hid from the algorithm before the data was clustered. 
+Computational grouping through clustering could provide an interesting perspective to us about what music is similar and dissimilar. Human understanding of artistic likeness in music is often confined to labels such as genre, but how do we arrive at genre definition? The landscape of musical art is so vast and constantly evolving that it can be difficult to effectively compare and contrast large groups of content. The makeup of music has so many variables that it would be hard for a human to consider them all effectively and appropriately. Clustering algorithms provide a reduced bias alternative method of grouping content, where the input considerations can be controlled. This is extremely useful because if what is important is considering the comparison of the music itself, then controlling the input to only be the artistic musical elements will limit the algorithm's view and base its groups only on these artistic elements. The limiting of input will ensure that the algorithm is not affected by the outside influencing factors that humans use as part of their method of grouping content. After groups are created, we can investigate what factors caused them to end up the way they did and we can reconsider the data that we hid from the algorithm before the data was clustered. 
 
-This project will carry out clustering of music at the level of albums, with data of individual songs being aggregated by album. After all the aggregation 4,125 albums were considered. More detailed music data would likely produce more sophisticated groupings, but the data used to cluster was Spotify's API data of songs aggregated to the album level. Principle component analysis will first be carried out to consider combinations of variables which are most useful in separating the data, as this will hopefully reduce the effect of noise in the data. Then the top principle components which give together explain the greatest proportion of variance in the data will be clustered using K-means clustering. By clustering the principle components instead of the raw data we hope to have to better separated clusters than if we cluster the raw data points, thus better definitions for what these groups mean. 
+This project will carry out clustering of music at the level of albums, with data of individual songs being aggregated by album. After all the aggregation a total of 4,125 albums were considered. More detailed music data would likely produce more sophisticated groupings, but the data used to cluster was Spotify's API data of songs aggregated to the album level. Principle component analysis will first be carried out to consider combinations of variables that are most useful in separating the data, as this will hopefully reduce the effect of noise in the data. Then the top principle components which together explain the greatest proportion of variance in the data will be clustered using K-means clustering. By clustering the principle components instead of the raw data we hope to have better separated clusters than if we cluster the raw data points, thus better definitions for what these groups mean. 
 
 ## Data Subset Creations
-One dataset is made to include only the average of all the subjective spotify measures and then another is made to include more expressions(maximums and ranges) of some of these measures. 
+One dataset is made to include only the average of all the subjective Spotify measures and then another is made to include more expressions(maximums and ranges) of some of these measures. 
 ```{r, include=FALSE}
 df = read_csv("Data/attrsOfAlbsFinal.csv")
 df = within(df,  id <- paste(Album, Artist, sep="---"))
@@ -55,7 +55,7 @@ dfObjectiveOnly = df %>%
 
 
 
-The genre of the album will be inferred by grabbing the larger, more general common genre names from the list of all the songs genres in the album. First the top 10 genres from all of the albums will be determined. Ultimately each album will be categorized with these 10 genres when applicable. We will try to establish a primary, secondary, and tertiary genre where applicable. 
+The genre of the album will be inferred by grabbing the larger, more general common genre names from the list of all the songs genres in the album. First, the top 10 genres from all of the albums will be determined. Ultimately each album will be categorized with these 10 genres when applicable. We will try to establish a primary, secondary, and tertiary genre where applicable. 
 ```{r, include = FALSE}
 dfObjectiveOnly["Genres"] = lapply(dfObjectiveOnly["Genres"], gsub, pattern = "hip hop", replacement = "hip-hop", fixed = TRUE) 
 
@@ -106,7 +106,7 @@ dfObjectiveOnly = dfObjectiveOnly %>% select(-Genres)
 
 
 
-There is also data for each year on what the estimated most three most popular genres of the year were. For each album it will be determined if the album's primary genre (Genre1) was one of these three most popular. 
+There is also data for each year on what the estimated three most popular genres of the year were. For each album, it will be determined if the album's primary genre (Genre1) was one of these three most popular. 
 ```{r, include=FALSE}
 dfObjectiveOnly$Genre1InYearTop = ifelse(stri_detect_fixed(dfObjectiveOnly$popularGenres, dfObjectiveOnly$Genre1), TRUE, FALSE)
 ```
@@ -119,14 +119,14 @@ dfObjectiveOnly$YearsSinceFirst = dfObjectiveOnly$ReleaseYear - dfObjectiveOnly$
 
 
 ## Section 1: Principle Component Roadmap
-Principle component analysis (PCA) is a form of dimension reduction that takes extracts features from the whole set of input variables to measure how associated each variable is to one another and the relative importance of each of these variables and all of their combinations. The product of PCA is a matrix of loading values for each principle component. All of the principle components together account for 100% of the variance in the data, but the purpose of PCA usually is to take as few principle components as possible to explain the most variance as possible. This means we will ultimately be trying to maximize this trade-off of number of principle components versus proportion of the data's variance explained. The dataset with the complete set of Spotify measures was plugged into PCA and the proportion of the variance captured in each principle component is seen in the barplot. 
+Principle component analysis (PCA) is a form of dimension reduction that takes extracts features from the whole set of input variables to measure how associated each variable is to one another and the relative importance of each of these variables and all of their combinations. The product of PCA is a matrix of loading values for each principle component. All of the principle components together account for 100% of the variance in the data, but the purpose of PCA usually is to take as few principle components as possible to explain the most variance as possible. This means we will ultimately be trying to maximize this trade-off of a number of principle components versus the proportion of the data's variance explained. The dataset with the complete set of Spotify measures was plugged into PCA and the proportion of the variance captured in each principle component is seen in the barplot. 
 ```{r, include=FALSE}
 pcaOfData = function(df){
   ids = df[,1]
   dfSub = df[,-1]
   pca = prcomp(dfSub, center = TRUE, scale. = TRUE)
   propExplained = pca$sdev^2/sum(pca$sdev^2)
-  barplot(propExplained, xlab = "Principle Component", ylab = "Proportion Variance Explained", main="Variance Explained By Each PC",ylim = c(0, 0.3),xlim = c(0, 11), names.arg = seq(1:24))
+  barplot(propExplained, xlab = "Principle Component", ylab = "Proportion Variance Explained", main="Variance Explained By Each PC",ylim = c(0, 0.3),xlim = c(0, 10.75), names.arg = seq(1:24))
   pca$x = cbind(ids, data.frame(pca$x))
   return (pca)
 }
@@ -137,25 +137,29 @@ pcaOfData = function(df){
 pcsSpotifyAndObjectives = pcaOfData(dfAll)
 ```
 
-It looks like the first 2 principle components are explaining almost 40% of the variance and then the there is a significant decrease in the proportion explained by PC 2 and PC 3 and the next slightly less significant decrease is from PC 5 to PC 6. After the 5th principle component, such little variance is being explained by each following principle component that there would likely be more hinderence than value from them if they were considered in the analysis. For this reason, for the purposes of this investigation, subsets within the first 5 principle components will be considered. The different  The rotation of the principle components shows the vector loadings for the collection of features and a quick analysis of this will be done to attempt to loosely define each of the first 5 principle components. 
+It looks like the first 2 principle components are explaining almost 40% of the variance and then there is a significant decrease in the proportion explained by PC 2 and PC 3 and the next slightly less significant decrease is from PC 5 to PC 6. After the 5th principle component, such little variance is being explained by each following principle component that there would likely be more hindrance than value from them if they were considered in the analysis. For this reason, for the purposes of this investigation, subsets within the first 5 principle components will be considered. The rotation of the principle components shows the vector loadings for the collection of features and a quick analysis of this will be done to attempt to loosely define each of the first 5 principle components. 
 
 
 ```{r}
-pcsSpotifyAndObjectives$rotation[,1:5]
+formattable(as.data.frame(pcsSpotifyAndObjectives$rotation[,1:5]) %>% rownames_to_column("VALUE"), list(formatter("span"),
+  `metric` = formatter("span", style = ~ style(color = "grey",font.weight = "bold","border-radius" = "0px")), 
+                     area(col = -1) ~ function(x) percent(x / 100, digits = 0),
+                     area(col = -1) ~ function(x)ifelse(x<=0, color_tile("red", "transparent")(x*c(x<=0)), 
+                                    color_tile("transparent", "forest green")(x*c(x>=0)))))
 ```
 
 
 Here we will define that the PC's can generally be considered as follows:
-- PC1: Measure of how explicit an album is compiled with how dancable and speechy it is. 
+- PC1: Measure of how explicit an album is compiled with how danceable and speechy it is. 
 - PC2: Measure of how low energy, low volume, high dynamic, and acoustic an album is.
-- PC3: How short an album is, and how its very likely not live with also measuring how acoustic, dancable, and low energy it is.
-- PC4: Measure of how long, instrumental, happy, and dancable an album is that is not live
+- PC3: How short an album is, and how its very likely not live with also measuring how acoustic, danceable, and low energy it is.
+- PC4: Measure of how long, instrumental, happy, and danceable an album is that is not live
 - PC5: Measure of how short, explicit, instrumental, slow, and sad an album is.
 
 
 
 ## Section 2: Clustering and Observation of Metadata Distributions
-Now that the data has gone through PCA and we have chosen the optimal number of potentially useful principle components and given them each loose definitions, now the data will go through unsupervised K-means clustering. As previously stated, we are clustering the principle components to hopefully reduce the effect of noise in the data from grouping the data effectively based on the most distinctive characteristic factors. For each subset of principle components which we plug into K-means, the within group sum of squared error will be calculated and plotted against the number of clusters to see the optimal number of groups for the particular input.
+Now that the data has gone through PCA and we have chosen the optimal number of potentially useful principle components and given them each loose definitions, now the data will go through unsupervised K-means clustering. As previously stated, we are clustering the principle components to hopefully reduce the effect of noise in the data from grouping the data effectively based on the most distinctive characteristic factors. For each subset of principle components that we plug into K-means, the within group sum of squared error will be calculated and plotted against the number of clusters to see the optimal number of groups for the particular input.
 
 
 
@@ -297,9 +301,9 @@ avgMetricsinClusts = function(dfInput, vals){
 
 
 
-The first 5 principle components will be available to cluster, but changing the number of top PC's we cluster on should hopefully not change the general meaning of the clusters too much. Different combinations of the first N principle components and different values of K will be tested to see what factors are defining the clusters most prominantly. The greatest decrease in variance explained by far is after the 2nd principle component, and the next notable decrease is between the 5th and 6th principle. For these reasons, the first 5 principle components could have potential to be the most useful; therefore, various clustering combinations using the first 5 principle components will be compared. Given a constant number of clusters K, we should expect a reasonably similar pattern in the traits of each cluster still. 
+The first 5 principle components will be available to cluster but changing the number of top PC's we cluster on should hopefully not change the general meaning of the clusters too much. Different combinations of the first N principle components and different values of K will be tested to see what factors are defining the clusters most prominently. The greatest decrease in variance explained by far is after the 2nd principle component, and the next notable decrease is between the 5th and 6th principle. For these reasons, the first 5 principle components could have the potential to be the most useful; therefore, various clustering combinations using the first 5 principle components will be compared. Given a constant number of clusters K, we should expect a reasonably similar pattern in the traits of each cluster still. 
 
-First the clustering will be done using only the 1st and 2nd principle components. The curve of the withing group sum of square error slightly suggests that the best number of clusters is 4, so that will be used. 
+First the clustering will be done using only the 1st and 2nd principle components. The curve of the within group sum of square error slightly suggests that the best number of clusters is 4, so that will be used. 
 ```{r}
 first2Pcs4Clusts = kMeansPipeline(data.frame(pcsSpotifyAndObjectives$x[,1:3]), 4, 2)
 ```
@@ -326,7 +330,7 @@ print(maroon5Appearances)
 coloredTableDisplay(first2Pcs4Clusts)
 ```
 
-This first attempt at clustering seems to form visible groups with some defining characteristics such as one cluster having high acousticness and low energy and dancability and another having high relative speechiness and propotion of explicit songs. The cluster with high speehiness and high proportion of explicit songs was also overwhelmingly represented by albums that had the primary genre of rap. This evidence may suggest that this first model would do a good job at seperately grouping rap albums and acoustic albums correctly. 
+This first attempt at clustering seems to form visible groups with some defining characteristics such as one cluster having high acousticness and low energy and danceability and another having high relative speechiness and proportion of explicit songs. The cluster with high speechiness and high proportion of explicit songs was also overwhelmingly represented by albums that had the primary genre of rap. This evidence may suggest that this first model would do a good job at separately grouping rap albums and acoustic albums correctly. 
 
 
 Now the first 3 principle components will be what is clustered on. The within groups sum of squares plot now shows that if may be useful to use 5 clusters. We will try using both 4 and 5 clusters to compare. The first will use 4 clusters. 
@@ -372,7 +376,7 @@ coloredTableDisplay(first3Pcs5Clusts)
 
 
 
-The addition of a 5th cluster does not show predominant traits right away, and it can be that this "added cluster" is cluster 4, with all of its levels pretty close to 0. However, the genre distribution plot shows there may be better separation of genres.
+The addition of a 5th cluster does not show predominant traits right away and it can be that this "added cluster" is cluster 4, with all of its levels pretty close to 0. However, the genre distribution plot shows there may be better separation of genres.
 
 Now the first 5 principle components will be clustered on. First only 4 clusters will be used. The number of clusters will be increased until 7 since the within group sum of squares plot seems to decrease steepest until the 7th cluster. 
 ```{r}
@@ -416,7 +420,7 @@ coloredTableDisplay(first5Pcs5Clusts)
 
 
 
-With the first 5 PC's included in making 5 clusters, the liveness cluster which was previously was created when we added the 3rd principle component gets split and allows the groups to be a bit more nuanced, as now there are 2 clusters which are high in liveness. We now see of these 2 that the cluster higher in liveness has a relatively low average acousticness, and the other had relatively low danceability and was relatively long in duration. (option)(An explanation for this could be that the one low in dancability is full of solos that may lessen the dancability of the songs) 
+With the first 5 PC's included in making 5 clusters, the liveness cluster which was previously was created when we added the 3rd principle component gets split and allows the groups to be a bit more nuanced, as now there are 2 clusters which are high in liveness. We now see of these 2 that the cluster higher in liveness has a relatively low average acousticness, and the other had relatively low danceability and was relatively long in duration. (option)(An explanation for this could be that the one low in danceability is full of solos that may lessen the danceability of the songs) 
 
 
 
@@ -438,7 +442,7 @@ coloredTableDisplay(first5Pcs6Clusts)
 
 
 
-It seems that when 6 clusters are initialized that there are 2 clusters with virtually the same characteristics being relatively high in danceability, speechiness, and explicitness. Both of these clusters were mostly solo male rap albums. This additional cluster does not accomplish much as it seems like it is separating albums which actually do have similar traits to one another. We cannot see the difference in the data by which this separation is being made, so it does not provide much information. 
+It seems that when 6 clusters are initialized that there are 2 clusters with virtually the same characteristics being relatively high in danceability, speechiness, and explicitness. Both clusters were mostly solo male rap albums. This additional cluster does not accomplish much as it seems like it is separating albums which do have similar traits to one another. We cannot see the difference in the data by which this separation is being made, so it does not provide much information. 
 
 
 Finally, with 7 clusters. 
@@ -462,7 +466,7 @@ coloredTableDisplay(first5Pcs7Clusts)
 
 
 
-This appears to give similar results to 6 clusters, where the rap cluster is split without much information as to why, and then that a new cluster without definitive features is added.
+This appears to give similar results to 6 clusters, where the rap cluster is split without much information as to why and then a new cluster without definitive features is added.
 
 
 With an extensive search through the different combinations the model which will be chosen to be further observed is the model using the first 5 principle components and 5 clusters. 
@@ -478,7 +482,7 @@ dfReattached = reattachData(reattachData(first5Pcs5Clusts, dfObjectiveOnly), dfA
 
 
 ## Section 3: Specific Questions About Clusters
-We have determined the model that used the first 5 PC's to form 5 clusters was the best, so now we can try to speculate about the groups which were formed. The following visualizations show what the properties are of albums making up each cluster. 
+We have determined the model that used the first 5 PC's to form 5 clusters was the best, so now we can try to speculate about the groups which were formed. The following visualizations show the properties of albums which make up each cluster. 
 
 
 ```{r, warning=FALSE, message = 'hide'}
@@ -507,21 +511,23 @@ numericDistributionEachClust(first5Pcs5Clusts, 'YearsSinceFirst')
 With cluster 3 so strongly being represented by primarily rap albums and so lowly being represented by rock albums, it may be worth asking what rock albums are being put into this group if the clustering algorithm seems to be able to separate them so well? What about these rock albums is causing them to be put here?
 
 ```{r}
-reattachData(first5Pcs5Clusts, dfObjectiveOnly) %>%
-  filter(cluster == 3 & Genre1 == "rock")
+formattable(reattachData(first5Pcs5Clusts, dfObjectiveOnly) %>%
+  filter(cluster == 3 & Genre1 == "rock")) %>%
+  select(id, cluster)
+
 ```
-The answer to this is reasonably simple. The rock albums which are being put in cluster 3 are filled with narration tracks. Two rock albums were placed in cluster3 and one was just completely an interview and the other had a discussion track between each song. All of this music-less conversation strongly boosts the average speechiness of the album. This high speechiness score is expressed in the combination of PC loadings and ultimately encourages the albums to be clustered with other albums with high amounts of speeciness, and most of these are rap albums. 
+The answer to this is reasonably simple. The rock albums which are being put in cluster 3 are filled with narration tracks. Two rock albums were placed in cluster3 and one was just completely an interview and the other had a discussion track between each song. All this music-less conversation strongly boosts the average speechiness of the album. This high speechiness score is expressed in the combination of PC loadings and ultimately encourages the albums to be clustered with other albums with high amounts of speechiness, and most of these are rap albums. 
 
 
 ### Question 2: What is characteristic of the cluster with the highest proportion of female artists? What genres are being covered by these female artists in this cluster high in acousticness?
-Males dominated the billboard charts between 1999 and 2019, and each cluster's proportion of men far outweighed that of women. However, the cluster with the greatest proportion of female representation was cluster 4, which was the group with high acousticness and low engery. These descriptors could apply to various genere labels however, so some further investigation may be done to see which genres that females are playing in this "soft music" cluster. First a chi-squared test of independence can be done to see if there is a statistically significant difference in the average proportion of each gender's representation accross the clusters.
+Males dominated the billboard charts between 1999 and 2019, and each cluster's proportion of men far outweighed that of women. However, the cluster with the greatest proportion of female representation was cluster 4, which was the group with high acousticness and low energy. These descriptors could apply to various genere labels however, so some further investigation may be done to see which genres that females are playing in this "soft music" cluster. First, a chi-squared test of independence can be done to see if there is a statistically significant difference in the average proportion of each gender's representation accross the clusters.
 ```{r}
 chisq.test(dfReattached$cluster, dfReattached$Gender)
 
-dfReattached %>%
+formattable(dfReattached %>%
   group_by(cluster, Gender) %>%
   summarise(n = n()) %>%
-  mutate(freq = n / sum(n))
+  mutate(freq = n / sum(n)))
 ```
 With a p-value less than 2.2 * e^-16 there is strong evidence to conclude that the average proportions of each gender are not equal in all clusters. This is apparent in the table where we see that albums by females make up 33% of cluster 4 while albums by females only make up 5.6% of cluster 3. 
 
@@ -561,42 +567,42 @@ femaleGenres = reattachedDataF %>%
 SankeyDiagram(femaleGenres[, c(-3, -4)],
               link.color = "Source", 
               weights = femaleGenres$count) 
-print(femaleGenres)
+print(formattable(femaleGenres))
 ```
 
-It looks like a good proportion of female pop albums in cluster 4 have a secondary genre of rock or no secondary genre. This cluster's female albums with a primary genre of country either have a rock or contemporary secondary genre. Then there is also a notable proportion of female pop albums from cluster 4 with a secondary genre of dance. All of this comes as very interesting considering that cluster 4 could be considered the "acoustic cluster" as it was high in acousticness and low in danceability and energy. Perhaps this means these albums are just representing female releases of the softer sides of each of these genres.
+It looks like a good proportion of female pop albums in cluster 4 have a secondary genre of rock or no secondary genre. This cluster's female albums with a primary genre of country either have a rock or contemporary secondary genre. There is also a notable proportion of female pop albums from cluster 4 with a secondary genre of dance. All of this comes as very interesting considering that cluster 4 could be considered the "acoustic cluster" as it was high in acousticness and low in danceability and energy. Perhaps this means these albums are just representing female releases of the softer sides of each of these genres.
 
 
 Observing counts of albums of each female artist who was in cluster 4 may help provide some insight as well. 
 
 ```{r}
-artistClusterCount(reattachedDataF)  %>%
+formattable(head(artistClusterCount(reattachedDataF)  %>%
   filter(cluster == 4) %>%
-  arrange(desc(countInClusts))
+  arrange(desc(countInClusts)), 10))
 ```
 It seems that the female artists with the most representation in this cluster all play different genres of softer music, and this makes sense because they are in the cluster high in acousticness.
 
-So while a single genre label might not exist to express it, there may be evidence to suggest that popular female artists tend to have more commonly played soft music. This may even suggest there is a type of music more associated with female artists. IS THIS CORRECT TO SAY BECAUSE IT DOES NOT SOUND LIKE IT. 
+While a single genre label might not exist to express it, there may be evidence to suggest that popular female artists tend to have more commonly played soft music. This may even suggest there is a type of music more associated with female artists. IS THIS CORRECT TO SAY BECAUSE IT DOES NOT SOUND LIKE IT. 
 
 
 ### Question 3: What are the genres being covered by all of these male groups in the cluster with the far greater group density?
 
-Here, cluster 2 will be focused on because it has the greatest proportion of groups, mostly represented by male groups. We already established a significant difference in the proportions of gender in each cluster, and we can again use a chi-squared test of independence to test for a difference in the proportion of group and solo artist albums across clusters. 
+Here, cluster 2 will be focused on because it has the greatest proportion of groups, mostly represented by male groups. We already established a significant difference in the proportions of gender in each cluster and we can again use a chi-squared test of independence to test for a difference in the proportion of group and solo artist albums across clusters. 
 
 ```{r}
 chisq.test(dfReattached$cluster, dfReattached$Group.Solo)
-dfReattached %>%
+formattable(dfReattached %>%
   group_by(cluster, Group.Solo) %>%
   summarise(n = n()) %>%
-  mutate(freq = n / sum(n))
+  mutate(freq = n / sum(n)))
 ```
 Again, with a p-value less than 2.2 * e^-16 there is strong evidence to conclude that the average proportions of group and solo artist albums are not equal in all clusters.
 
 ```{r}
 reattachedDataClust2Group = reattachData(first5Pcs5Clusts, dfObjectiveOnly) %>%
   filter(cluster == 2, Group.Solo == "Group")
-countInClusters(reattachedDataClust2Group, c("Genre1")) %>%
-  arrange(desc(countInClusts))
+formattable(countInClusters(reattachedDataClust2Group, c("Genre1")) %>%
+  arrange(desc(countInClusts)))
 
 ```
 
@@ -622,8 +628,8 @@ SankeyDiagram(groupClustGenres[, c(-3, -4)],
 The rock genre seems to be a part of the tags of many of these group albums in cluster 2, as many of the primary genre pop, rap, and country albums have a secondary genre of rock. Most of the primarily rock albums have a secondary genre of alternative. From the great representation of rock albums in this cluster's albums released by groups, it could be inferred that the significant representation of group artists in this cluster is due to rock bands of various subgenres. 
 
 
-### Question 4: Are there any demographic details which help understand the differences between the 2 clusters with high scores for liveness?
-Clusters 1 and 2 have high loadings for the average liveness of albums in that cluster, so it would be interesting to see if there were other factors we could observe to see difference between them.
+### Question 4: Are there any demographic details that help understand the differences between the 2 clusters with high scores for liveness?
+Clusters 1 and 2 have high loadings for the average liveness of albums in that cluster, so it would be interesting to see if there were other factors we could observe to see a difference between them.
 
 \n 
 <center>
@@ -646,7 +652,7 @@ SankeyDiagram(dfReattached1Live[, c(-3, -4)],
               weights = dfReattached1Live$count) 
 
 ```
-In cluster 1 the primary genre with the greatest representation was pop, and most of those albums had a secondary genre of alternative or dance. There were a large number of albums with an unknown primary genre not in the top 10. THis cluster was measured as being high in liveness, energy, and danceability and being low in acousticness. 
+In cluster 1 the primary genre with the greatest representation was pop, and most of those albums had a secondary genre of alternative or dance. There were a large number of albums with an unknown primary genre not in the top 10. This cluster was measured as being high in liveness, energy, and danceability and being low in acousticness. 
 
 \n 
 <center>
@@ -668,7 +674,7 @@ SankeyDiagram(dfReattached2Live[, c(-3, -4)],
 chisq.test(dfReattached1And2$cluster, dfReattached1And2$Genre1)
 ```
 
-Meanwhile, in cluster 2's albums with an over-average liveness score the most represented primary genre is again pop, but most of these have a secondary genre of rock. There are also more albums with a primary genre of rock or country. This cluster was measured as being high in liveness and duration and low in danceability. It is possible that the greater rock influence in the more live albums in this cluster means that potentially there are more solos being taken in these albums or talking happening throughout, ultimately bringing down the danceability of a track. 
+Meanwhile, in cluster 2's albums with an over-average liveness score the most represented primary genre is again pop, but most of these have a secondary genre of rock. There are also more albums with a primary genre of rock or country. This cluster was measured as being high in liveness and duration and low in danceability. It is possible that the greater rock influence in the more live albums in this cluster means that potentially there are more solos being taken in these albums or talking happening throughout so this ultimately brings down the danceability of a track. 
 
 
 
@@ -678,7 +684,7 @@ Meanwhile, in cluster 2's albums with an over-average liveness score the most re
 dfGrammyAlbs = dfReattached %>%
   filter(numGrammys >0)
 
-ggplot(dfGrammyAlbs, aes(x = cluster, y = numGrammys)) +geom_bar(stat = "identity")
+ggplot(dfGrammyAlbs, aes(x = cluster, y = numGrammys)) +geom_bar(stat = "identity") + labs(title = "Number of Grammy Awards Given to Albums in Each Cluster", x = "Cluster", y = "Number of Grammy Awards")
 ```
 
 
@@ -687,22 +693,22 @@ summary(aov(numGrammys ~ cluster, data = dfReattached))
 TukeyHSD(aov(numGrammys ~ cluster, data = dfReattached))
 ```
 
-The Tukey pairwise ANOVA test shows a 0.0008 p-value for its comparison of average number of Grammy awards in cluster 3 versus cluster 5. This means there is strong evidence to suggest there is a significant difference in the average number of Grammy awards between cluster 3 and 5. This is supported by the bar plot above the test that shows that cluster 3 has the fewest Grammy albums and cluster 5 has the most. Cluster 3 was very strongly considered our "rap cluster" and cluster 5 actually lacked characteristic factors, so the addition of this information of this significant difference between these two groups may suggest that more more general music is associated with greater critical acclaim and perhaps that rap has not received the same attention from accolades as other genres. IS THIS OK TO SAY?
+The Tukey pairwise ANOVA test shows a 0.0008 p-value for its comparison of the average number of Grammy awards in cluster 3 versus cluster 5. This means there is strong evidence to suggest there is a significant difference in the average number of Grammy awards between cluster 3 and 5. This is supported by the bar plot above the test that shows that cluster 3 has the fewest Grammy albums and cluster 5 has the most. Cluster 3 was very strongly considered our "rap cluster" and cluster 5 actually lacked characteristic factors, so the addition of this information of this significant difference between these two groups may suggest that more general music is associated with greater critical acclaim and perhaps that rap has not received the same attention from accolades as other genres. IS THIS OK TO SAY?
 
 
 ## Takeaways 
 This investigation showed that when we try to separate musical albums by purely their musical characteristics, the separations did not always mirror traditional genre labelings. Some groups corresponded strongly with traditionally considered genres (such as cluster 3 being almost exclusively rap), but others separated themselves more so by concepts not completely encapsulated by genre names (like how cluster 4 was largely made up of soft music). Overall this provides some evidence that labels for genres are broad and that potentially we could compare music differently than we currently do. 
 
-The things we ultimately learned were :
+The things we ultimately learned were:
 1. The easiest albums to separate from the rest of the albums were solo male rap albums. 
 2. Females were most represented in the cluster of soft albums high in acoustic qualities. 
 3. Groups were most represented in a cluster with a large rock presence, and a high score for liveness, meaning that likely many rock band studio albums have qualities which give them a positive score for liveness.
 4. Albums high in liveness were able to be significantly split again by some characteristic where one liveness cluster was low in danceability while the other was considered more danceable.  
-5. Albums in the general cluster that was not significantly high in any loading actually had the greatest proportion of Grammys, whereas the rap cluster which was the most "traditional genre definitive" had the fewest Grammys.
+5. Albums in the general cluster that was not significantly high in any loading had the greatest proportion of Grammys, whereas the rap cluster which was the most "traditional genre definitive," had the fewest Grammys.
 
-## Apendix
+## Appendix
 
-Thes are all output gathered from testing various PC and K cluster combinations. 
+Below are the output gathered from testing various PC and K cluster combinations. 
 
 ```{r}
 plot(pcsSpotifyAndObjectives$x[, c(2,3)], col=first2Pcs4Clusts$cluster, pch=16)
