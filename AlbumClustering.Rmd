@@ -564,6 +564,7 @@ femaleGenres = reattachedDataF %>%
   group_by(Genre1, Genre2, Genre3) %>%
   summarise(count = n())
 
+
 SankeyDiagram(femaleGenres[, c(-3, -4)],
               link.color = "Source", 
               weights = femaleGenres$count) 
@@ -692,6 +693,14 @@ ggplot(dfGrammyAlbs, aes(x = cluster, y = numGrammys)) +geom_bar(stat = "identit
 summary(aov(numGrammys ~ cluster, data = dfReattached))
 TukeyHSD(aov(numGrammys ~ cluster, data = dfReattached))
 ```
+
+```{r}
+dfReattached %>%
+  group_by(cluster) %>%
+  summarise(val = mean(numGrammys))
+```
+
+
 
 The Tukey pairwise ANOVA test shows a 0.0008 p-value for its comparison of the average number of Grammy awards in cluster 3 versus cluster 5. This means there is strong evidence to suggest there is a significant difference in the average number of Grammy awards between cluster 3 and 5. This is supported by the bar plot above the test that shows that cluster 3 has the fewest Grammy albums and cluster 5 has the most. Cluster 3 was very strongly considered our "rap cluster" and cluster 5 actually lacked characteristic factors, so the addition of this information of this significant difference between these two groups may suggest that more general music is associated with greater critical acclaim and perhaps that rap has not received the same attention from accolades as other genres. IS THIS OK TO SAY?
 

@@ -21,3 +21,9 @@ Best design
   - get RIAA album certifications 
   - get album grammys
   - take 
+
+
+```{r}
+head(read.csv("Data/BillboardFromLast20/billboardHot100_1999-2019.csv"))
+```
+
