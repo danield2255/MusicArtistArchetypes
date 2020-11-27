@@ -1,5 +1,5 @@
 ---
-title: "AlbumData"
+title: "AlbumDataGetter"
 author: "Daniel DeFoe"
 output: html_document
 ---
@@ -12,7 +12,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r}
 library(tidyverse)
-
+#Pull in functions from separate files
 source("frostFunctions.R")
 source("ClusteringPrepFunctions.R")
 ```
@@ -29,7 +29,7 @@ albumDates = read.csv("Data/albReleaseDates.csv")
 
 
 
-
+Rename columns in each of the datasets
 ```{r}
 colnames(billboardDf)[colnames(billboardDf) == "Weekly.rank"] = "BillboardWeekRank"
 colnames(billboardDf)[colnames(billboardDf) == "Peak.position"] = "PeakPosBillboard"
@@ -52,13 +52,13 @@ colnames(songAttrsDf)[colnames(songAttrsDf) == "Track"] = "Name"
 
 
 
-
+Apply functions to the data in order to standardize how terms will be expressed across the different datasets.
 ```{r}
 artistDf["Genres"] = lapply(artistDf["Genres"], stringColStandardizer)
 artistDf$Genres = tolower(artistDf$Genres)
 
 billboardDf["Artists"] = lapply(billboardDf["Artists"], artistPunctuationStrip)
-billboardDf[c("Artists","Name","Genre","WritingCredits", "Features")] = lapply(billboardDf[c("Artists","Name","Genre","WritingCredits", "Features")], stringColStandardizer) #not lyrics
+billboardDf[c("Artists","Name","Genre","WritingCredits", "Features")] = lapply(billboardDf[c("Artists","Name","Genre","WritingCredits", "Features")], stringColStandardizer) #will not apply to lyrics
 billboardDf$ReleaseDate = as.Date(billboardDf$ReleaseDate, format = "%B %d, %Y")
 billboardDf$Week = as.character(billboardDf$Week)
 billboardDf$Genre = tolower(billboardDf$Genre)
@@ -76,8 +76,6 @@ riaaDf["Artist"] = lapply(riaaDf["Artist"], artistPunctuationStrip)
 riaaDf[c("Album","Artist","Label")]=lapply(riaaDf[c("Album","Artist","Label")],stringColStandardizer)
 riaaDf[c("Album")]=lapply(riaaDf[c("Album")],riaaSuffixStrip)
 
-
-
 albumDates["ReleaseDate"] = lapply(albumDates["ReleaseDate"], as.Date)
 ```
 
@@ -87,7 +85,7 @@ albumDates["ReleaseDate"] = lapply(albumDates["ReleaseDate"], as.Date)
 
 
 ## Engineer Features
-Get the data in the form it is needed, by extracting features of each artist's albums individually based on :
+Get the data in the form it is needed, by extracting features of each artist's albums individually based on:
   - song qualities
   - previous album qualities
   - album's place in the greater music industry scope
@@ -135,7 +133,7 @@ accoladesDf = merge(riaaDf , grammyDf, by = c("Artist", "Album"), x.all = TRUE) 
 ```
 
 
-
+Next, the actual features of interest will be pulled out for each of the albums. 
 ```{r}
 head(songAttrsDf, 90)
 
@@ -200,7 +198,7 @@ attrsOfAlbsPropotions = attrsOfAlbsNext %>%
 
 head(attrsOfAlbsPropotions, 100)
 ```
-
+Merge the data on accolades for each album and take care of missing data. 
 ```{r}
 attrsOfAlbsFinal = attrsOfAlbs %>%
   merge(accoladesDf, by = c("Artist", "Album"), all.x = TRUE)
@@ -213,4 +211,5 @@ attrsOfAlbsFinal$numGrammys[is.na(attrsOfAlbsFinal$numGrammys)] = 0
 write_csv(attrsOfAlbsFinal, "Data/attrsOfAlbsFinal.csv")
 write_csv(artistDf, "Data/artistDf.csv")
 ```
+
 

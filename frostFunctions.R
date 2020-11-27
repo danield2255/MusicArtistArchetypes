@@ -6,11 +6,14 @@ library(stringr)
 library(kableExtra)
 library(gridExtra)
 
+#Get rid of any feature extension to the title
+#Features on songs will have their own column
 riaaSuffixStrip = function(title){
   new = gsub("\\(Feat.*", "", title)
   return(new)
 }
 
+#Dont include some punctuation in artist names
 artistPunctuationStrip = function(artist){
   new = artist %>%
     as.character(.)%>%
@@ -19,6 +22,7 @@ artistPunctuationStrip = function(artist){
   return(new)
 }
 
+#Remove extension from spofity song titles
 spotifySuffixStrip = function(title){#this needs fix
   new = title %>% 
     sub(" - Remastered", "", .) %>%
@@ -28,6 +32,7 @@ spotifySuffixStrip = function(title){#this needs fix
   return(new)
 }
 
+#Standardize how columns of type string/char would be expressed across datasets
 stringColStandardizer = function(oldText){
   newText = oldText %>%
     as.character(.)%>%
@@ -37,8 +42,7 @@ stringColStandardizer = function(oldText){
   return(newText)
 }
 
-
-
+#Join all relevant data across datasets for a particular artist 
 artistDataJoiner = function(artist){
   drops = c("X", "Day", "Artists", "Artist", "Unnamed..0")
   billboardSub = billboardDf[billboardDf$Artists %like% artist, ]
@@ -62,17 +66,19 @@ artistDataJoiner = function(artist){
   return(new2)
 }
 
-
+#Calculate the score we defined as 'pop1', one possible measure of popularity
 pop1Calc = function(df){
   ret = sum(df$WeeksOnBillboard / df$BillboardWeekRank, na.rm = TRUE)
   return(ret)
 }
 
+#Calculate the score we defined as 'pop2', one possible measure of popularity
 pop2Calc = function(df){ 
   ret = sum(1/df$BillboardWeekRank, na.rm = TRUE)
   return(ret)
 }
 
+#Calculate the score we defined as 'pop3', one possible measure of popularity
 pop3Calc = function(df){
   ret =log(101.1 - min(df$PeakPosBillboard, na.rm = TRUE))
   if (is.nan(ret)){
@@ -81,6 +87,7 @@ pop3Calc = function(df){
   return(ret)
 }
 
+#Step 1 in calculating the score we defined as 'pop4', one possible measure of popularity
 pop4Calc1 = function(val){
   if (!is.na(val)){
     ret = log(101.1- val)
@@ -90,11 +97,13 @@ pop4Calc1 = function(val){
   return(ret)
 }
 
+#Step 2 in calculating the score we defined as 'pop4'
 pop4Calc2 = function(df){
   vals = sapply(df$BillboardWeekRank, pop4Calc1)
   return(mean(vals, na.rm = TRUE))
 }
 
+#Calculate all measures of popularity for all albums
 getPopularityMetric = function(df){
   new1 = df %>%
     select(Name, Album, BillboardWeekRank, WeeksOnBillboard, PeakPosBillboard) %>%
@@ -116,8 +125,9 @@ getPopularityMetric = function(df){
   return(new)
 }
 
-
-
+#Count the number of writers on each song in a dataframe of a band's songs 
+#  who do not appear in a list of band-members we input, so counts writers 
+#  not in the group
 countNonBandWriters = function(df, bandMembers){
   if (is.na(df$WritingCredits)){
     nonBandWriters = NA
@@ -129,7 +139,7 @@ countNonBandWriters = function(df, bandMembers){
   return(nonBandWriters)
 }
 
-
+#Initializes the countNonBandWriters function
 getOutsideInfluenceScore = function(df, bandMembers){
   new1 = df %>%
     select(Name, WritingCredits, Album) %>%
@@ -151,7 +161,8 @@ getOutsideInfluenceScore = function(df, bandMembers){
   return(new)
 }
 
-
+#Replaces contractions with the terms they are contracting
+# Meant to be used on lyric data
 noContraction = function(lyrics){
   new = lyrics %>% 
     gsub("can't", "cannot", .) %>% #special n't
@@ -193,7 +204,7 @@ noContraction = function(lyrics){
   return(new)
 }
 
-
+#Get rid of stop words in lyrics and tokenize lyrics in their own df
 individualLyric = function(df){
   newDf = df %>% 
     unnest_tokens(word, Lyrics) %>%
@@ -202,14 +213,14 @@ individualLyric = function(df){
   return(newDf)
 }
 
-
+#First apply all lyric preparation functions
+#Calculate measure of lyric complexity to associate with a song
 getLyricalComplexity = function(df, standard){
   lyricsDf = df %>%
     select(Name, Lyrics) %>%
     distinct() %>% #now have the lyrics of all of the songs 
     mutate(Lyrics = tolower(Lyrics)) %>% #Get all lyrics to be lower case
     mutate(Lyrics = noContraction(Lyrics)) %>% #There are now no contractions besides possessives
-    #mutate(unlist(str_split(Lyrics, "\n", n = 1))) %>% ##############NEEED TO BE ABLE TO STRIP THE TITLE
     mutate(Lyrics = gsub("[^a-z ]", " ", Lyrics)) #Remove what is not an english letter
   
   individual = individualLyric(lyricsDf)
@@ -224,7 +235,7 @@ getLyricalComplexity = function(df, standard){
     group_by(Name) %>% 
     tally(name = "totalWords")
   
-  
+  #Get the average length of words in the data, and the average number of syllables in the data
   avgLenAndSyls = individual %>%
     group_by(Name) %>%
     distinct() %>%
@@ -253,8 +264,9 @@ getLyricalComplexity = function(df, standard){
     full$wordsPerSec[is.na(full$wordsPerSec)] = mean(full$wordsPerSec, na.rm = TRUE)
   }
 
+  #Apply the following subjective function we defined to get the lyrical complexity of a song
   scores = full %>%
-    do(data.frame(Name = full$Name, lyricalComplexity = 1.5 *full$avgWordLen +full$avgSyllables + 2* full$UniqueToTotalRatio+ full$wordsPerSec))
+    do(data.frame(Name = full$Name, lyricalComplexity = 1.5 * full$avgWordLen + full$avgSyllables + 2 * full$UniqueToTotalRatio + full$wordsPerSec))
   
   datesDf = df %>%
     select(Name, ReleaseDate, Album) %>%
@@ -268,21 +280,23 @@ getLyricalComplexity = function(df, standard){
   return(final)
 }
 
-
+#Count the number of unique chords in a section of a song 
+# EX) I - vi - V - vi = 3 because there are 4 chords, but 4 unique
 countUniqueChords = function(df){
   uniqueChords = unique(unlist(strsplit(paste(paste("-", unlist(df["Progression"]), sep = ""), collapse = ""), "-"))[-1])
   numUniqueChords = length(uniqueChords[uniqueChords != "NA"])
   return(numUniqueChords)
 }
 
+#Checks if the end of a chord progression is different than the pattern it seems to define
 checkDifferentEnd = function(df){
   vals = df$EndDifferent
   endDif = sum(!is.na(vals) & vals != "")
   return (endDif)
 }
 
-
-getMusicComplexity = function(df, standard){
+#Calculate subjective measure of musical complexity of a song 
+getMusicComplexity = function(df, standard){ #standard is a boolean, and if it is true, then the variables will be standardized
   new1 = df %>%
     select(Name, Section, Progression,EndDifferent, DurationInSecs, NumSectionChords, nonDiatonicChords, extendedChords) %>%
     distinct() 
@@ -321,8 +335,9 @@ getMusicComplexity = function(df, standard){
   return(final)
 }
 
-
-fullMetricsDataSet = function(popScores, origScores, lyricComp, musicComp, standard){
+#Get the complete dataset of the subjective metrics for any number of songs, getting each song's 
+#   popularity, originality, lyrical complexity, and musical complexity
+fullMetricsDataSet = function(popScores, origScores, lyricComp, musicComp, standard){ #provide the datasets with 'Name' and 'Album' columns 
   full = join_all(list(as.data.frame(popScores), as.data.frame(origScores), as.data.frame(lyricComp), as.data.frame(musicComp)), by = c("Name", "Album"), type = "full")
   if (standard){
     full[c(3,4,5,6,9,10)] = sapply(full[c(3,4,5,6,9,10)],scale) 
@@ -335,6 +350,7 @@ fullMetricsDataSet = function(popScores, origScores, lyricComp, musicComp, stand
   return(full)
 }
 
+# Give a list of songs to compare, as well as the full datasets of artist info and metrics
 compareTracks = function(songs, artistDf, metricDf){
   songs = lapply(songs, stringColStandardizer)
   artistDfSub = artistDf[artistDf$Name %in% songs, ] %>%
@@ -375,9 +391,10 @@ compareTracks = function(songs, artistDf, metricDf){
   return(list(outsideInfTableDf, popTableDf, complexityTableDf))
 }
 
-
-
-
+# A wrapper function which will call upon the full pipeline of metric analysis for any artist
+## Provide the artist name, the members we want to consider as songwriters, the albums we want 
+##     to be considered valid for metric analysis, any specific songs we want to exclude, 
+##     and whether or not we want to standarize our analysis across the artists other songs
 completeArchDf = function(artist, members, validAlbs, excludeSongs, standard){
   artistDf = artistDataJoiner(artist) %>% 
     filter(!is.na(BillboardWeekRank) & Album %in% c(validAlbs, NA) & !Name %in% excludeSongs)
@@ -394,26 +411,55 @@ completeArchDf = function(artist, members, validAlbs, excludeSongs, standard){
   return (fullMetric)
 }
 
+# Create data visualizations of linear regressions of each metric over time for an artist's fullMetric dataset
 singleArtistVisual = function(artist, fullMetric){
-  complexGraph = ggplot(fullMetric, aes(x = ReleaseDate, y = totalComplexity)) + geom_point() + geom_smooth(method = "lm", ) + labs(y = "Standardized Song Complexity", x = "Release Date")
-  popGraph = ggplot(fullMetric, aes(x = ReleaseDate, y = pop1)) + geom_point() + geom_smooth(method = "lm", ) + labs(y = "Standardized Pop Score", x = "Release Date")
-  infGraph = ggplot(fullMetric, aes(x = ReleaseDate, y = nonBandMemberWriters)) + geom_point() + geom_smooth(method = "lm", ) + labs(y = "Number of Non-Artist Writers", x = "Release Date")
+  complexGraph = ggplot(fullMetric, aes(x = ReleaseDate, y = totalComplexity)) + 
+    geom_point() + 
+    geom_smooth(method = "lm", ) + 
+    labs(y = "Standardized Song Complexity", x = "Release Date")
+  
+  popGraph = ggplot(fullMetric, aes(x = ReleaseDate, y = pop1)) + 
+    geom_point() + 
+    geom_smooth(method = "lm", ) + 
+    labs(y = "Standardized Pop Score", x = "Release Date")
+  
+  infGraph = ggplot(fullMetric, aes(x = ReleaseDate, y = nonBandMemberWriters)) + 
+    geom_point() +
+    geom_smooth(method = "lm", ) + 
+    labs(y = "Number of Non-Artist Writers", x = "Release Date")
   
   grid.arrange(complexGraph, popGraph, infGraph, ncol = 2, nrow = 2, top = paste(artist, "'s Song Popularity, Complexity, and Outside Influence Over Time"))
   summary(lm(fullMetric$totalComplexity~fullMetric$ReleaseDate))
   
 }
 
-
+#Compares 2 artists in the artistDfs in visual and tabular comparisons of their subjective metrics
+#Includes statistical comparisons to one another to see if their metric scores are statistically significantly different
 artistCompare = function(artistDfs){
   fullDf = bind_rows(artistDfs)
   artists = unique(fullDf$Artist)
   artist1 = paste(artists[-length(artists)], collapse = ", ")
   artist2 = tail(artists, n= 1)[[1]]
+  
   #Visualize
-  popPlot = ggplot(fullDf, aes(x = ReleaseDate, y = pop1, color = Artist, shape = Artist)) + geom_smooth(method = "lm",se = FALSE)+ geom_point(alpha= 0.5) + labs(x = "Release Date", y = "Popularity Metric (AU)") + theme(axis.title =element_text(size=9))
-  compPlot= ggplot(fullDf, aes(x = ReleaseDate, y = lyricalComplexity, color = Artist, shape = Artist)) + geom_smooth(method = "lm", se = FALSE)+ geom_point(alpha= 0.5) + labs(x= "Release Date",y = "Lyrical Complexity Metric (AU)")+ theme(axis.title =element_text(size=9))
-  infPlot = ggplot(fullDf, aes(x = ReleaseDate, y = nonBandMemberWriters, color = Artist, shape = Artist)) + geom_smooth(method = "lm", se = FALSE)+ geom_point(alpha= 0.5) + labs(x= "Release Date",y = "Number of Outside Writers") + theme(axis.title =element_text(size=9))
+  popPlot = ggplot(fullDf, aes(x = ReleaseDate, y = pop1, color = Artist, shape = Artist)) + 
+    geom_smooth(method = "lm",se = FALSE)+ 
+    geom_point(alpha= 0.5) + 
+    labs(x = "Release Date", y = "Popularity Metric (AU)") + 
+    theme(axis.title =element_text(size=9))
+  
+  compPlot= ggplot(fullDf, aes(x = ReleaseDate, y = lyricalComplexity, color = Artist, shape = Artist)) + 
+    geom_smooth(method = "lm", se = FALSE) + 
+    geom_point(alpha= 0.5) + 
+    labs(x= "Release Date",y = "Lyrical Complexity Metric (AU)") + 
+    theme(axis.title =element_text(size=9))
+  
+  infPlot = ggplot(fullDf, aes(x = ReleaseDate, y = nonBandMemberWriters, color = Artist, shape = Artist)) + 
+    geom_smooth(method = "lm", se = FALSE) + 
+    geom_point(alpha= 0.5) + 
+    labs(x= "Release Date",y = "Number of Outside Writers") + 
+    theme(axis.title =element_text(size=9))
+  
   grid.arrange(popPlot, compPlot, infPlot, ncol = 2, nrow = 2, top = textGrob(paste("Popularity, Lyrical Complexity, and Outside Influence of ", artist1, " and ", artist2, " Songs Over Time"), gp = gpar(fontsize = 10)))
   
   #Statistical Comparison
