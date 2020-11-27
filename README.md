@@ -1,6 +1,6 @@
 # MusicArtistArchetypes
 ## Description
-This was my senior project advised on by Professor Kelly Bodwin at Cal Poly SLO in Winter 2019. The project aimed to group albums by popular music artists using unsupervised clustering. Once the clusters were made, we could infer on what factors the model was separating groups by and then see if any of those groups aligned with traditional music genres. The html report in "MarkdownKnittedOutputs" gives detailed results. 
+This was my senior project advised on by Professor Kelly Bodwin at Cal Poly SLO in Winter 2019. The project aimed to group albums using unsupervised clustering. All studio and live albums by artists who appeared on the Billboard Hot 100 in between 1999 and 2019 were considered in the exploration. We conducted various itterations of Principle Component Analysis, and ran K-means with different levels of K to attempt to best separate the data. Once the clusters were made, we could infer on what factors the model was separating groups by and then see if any of those groups aligned with traditional music genres. The html report in "MarkdownKnittedOutputs" gives detailed results. 
 
 All data scraping was done using Python in Jupyter Notebooks, and all analysis was done using R. 
 
