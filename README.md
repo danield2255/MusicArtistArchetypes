@@ -12,6 +12,7 @@ All data scraping was done using Python in Jupyter Notebooks, and all analysis w
   - OtherScrapingFrost.ipynb: Data scraper which gets data from the Grammys, Spotify, RIAA, and ultimate-guitar.com. Not all of this data is used in this project, as it was purposed for a tangent project. 
   - SpotifyClientLinker.ipynb: API calling notebook to get data from spotify. You will need personal API credentials to use for yourself. 
   - chromedriver: The selenium required executable to do automated web naviagtion
+- frostFunctions.R: an R script containing all the function definitions and comment descriptions used in the analysis files
 - AlbumClustering.Rmd: Main analysis file used to knit the output reports
 - AlbumDataGetter.Rmd: Data cleaning and subsetting file
 - WhatMakesUpAnAlbumFinal.pdf: Schema of fields which were included in the analysis
