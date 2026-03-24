@@ -16,6 +16,7 @@ All data scraping was done using Python in Jupyter Notebooks, and all analysis w
 - AlbumClustering.Rmd: Main analysis file used to knit the output reports
 - AlbumDataGetter.Rmd: Data cleaning and subsetting file
 - WhatMakesUpAnAlbumFinal.pdf: Schema of fields which were included in the analysis
+<img src="WhatMakesUpAnAlbumFinal.pdf" alt="Visual of factors considered in the analysis of albums" width="500"/>
 
 
 ## Potential Next Steps
